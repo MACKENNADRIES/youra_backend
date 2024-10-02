@@ -1,10 +1,9 @@
 from django.db import models
-
-# This section is for all things relating to a rak (Random ACt of Kindness)
-
-from django.db import models
 from django.utils import timezone
-from users.models import CustomUser  # Import user from users app
+from django.contrib.auth import get_user_model  # Import the User model
+from users.models import CustomUser  # Import user from users app (if needed)
+
+User = get_user_model()  # Define User to refer to the current user model
 
 class RAKPost(models.Model):
     STATUS_CHOICES = [
@@ -20,8 +19,12 @@ class RAKPost(models.Model):
         ('offer', 'Offer'),
         ('request', 'Request'),
     ]
-    
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='rak_posts')
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='rak_posts'
+    )
     description = models.TextField()
     media = models.FileField(upload_to='rak_media/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -40,9 +43,13 @@ class RAKPost(models.Model):
 
 class ClaimedRAK(models.Model):
     rak = models.OneToOneField(RAKPost, on_delete=models.CASCADE, related_name='claimed_rak')
-    claimant = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='claimed_raks')
+    claimant = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='claimed_raks'
+    )
     claimed_at = models.DateTimeField(auto_now_add=True)
-    details = models.TextField(blank=True, null=True)  # Details on how the RAK will be fulfilled
+    details = models.TextField(blank=True, null=True)
 
 class ClaimAction(models.Model):
     claimed_rak = models.ForeignKey(ClaimedRAK, on_delete=models.CASCADE, related_name='actions')
@@ -57,9 +64,3 @@ class ClaimAction(models.Model):
             self.completed = True
             self.completed_at = timezone.now()
             self.save()
-
-class PayItForward(models.Model):
-    original_rak = models.OneToOneField(RAKPost, on_delete=models.CASCADE, related_name='original_rak')
-    new_rak = models.ForeignKey(RAKPost, on_delete=models.CASCADE, related_name='pay_it_forward_rak')
-    bonus_points = models.PositiveIntegerField(default=15)
-    created_at = models.DateTimeField(auto_now_add=True)
