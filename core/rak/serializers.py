@@ -8,6 +8,20 @@ class RAKPostSerializer(serializers.ModelSerializer):
         model = RAKPost
         fields = ['id', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'is_completed']
 
+    def update(self, instance, validated_data):
+        # Update each field individually, using the current value if a new value is not provided
+        instance.description = validated_data.get('description', instance.description)
+        instance.media = validated_data.get('media', instance.media)
+        instance.status = validated_data.get('status', instance.status)
+        instance.visibility = validated_data.get('visibility', instance.visibility)
+        instance.post_type = validated_data.get('post_type', instance.post_type)
+        instance.aura_points = validated_data.get('aura_points', instance.aura_points)
+        instance.is_completed = validated_data.get('is_completed', instance.is_completed)
+        
+        # Save the instance with the updated values
+        instance.save()
+        return instance
+
 class ClaimedRAKSerializer(serializers.ModelSerializer):
     rak = serializers.ReadOnlyField(source='rak.id')  # Add read-only field for related RAKPost
     claimant = serializers.ReadOnlyField(source='claimant.id')  # Claimant read-only
