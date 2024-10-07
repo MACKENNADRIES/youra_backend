@@ -13,10 +13,12 @@ class RAKPostList(APIView):
         serializer = RAKPostSerializer(rak_posts, many=True)
         return Response(serializer.data)
 
+    # we want to make an post
     def post(self, request):
         serializer = RAKPostSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            serializer.save(owner=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
