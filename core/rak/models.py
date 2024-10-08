@@ -38,9 +38,11 @@ class RAKPost(models.Model):
     # Method to handle claiming of RAK
     def claim_rak(self, user):
         if self.status != 'open':
-            raise ValueError("This RAK cannot be claimed.")
+            raise ValueError("This RAK cannot be claimed because it has already been claimed or completed.")
         self.status = 'claimed'
         self.save()
+        
+        ClaimedRAK.objects.create(rak=self, claimant=user)
 
     # Awarding aura points for completed RAKs
     def award_aura_points(self):

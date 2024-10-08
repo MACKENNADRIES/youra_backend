@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import RAKPost, UserProfile 
+from .models import RAKPost, UserProfile, Badge, Notification
 
 @receiver(post_save, sender=RAKPost)
 def update_aura_points(sender, instance, **kwargs):

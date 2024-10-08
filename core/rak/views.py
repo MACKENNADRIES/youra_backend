@@ -120,3 +120,18 @@ class ClaimList(APIView):
             serializer.save(claimant=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClaimRAKView(APIView):
+    def post(self, request, rak_id):
+        try:
+            rak = RAKPost.objects.get(id=rak_id)
+            # Call the claim_rak method which includes the logic to check if it's still open
+            rak.claim_rak(request.user)
+            
+            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
+        
+        except RAKPost.DoesNotExist:
+            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
