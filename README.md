@@ -83,6 +83,72 @@ The app fosters a supportive environment where users can track their impact, con
 ### DB Schema
 ![](core/class.png)
 
+## Must-Have Features:
+
+### User Authentication and Profiles:
+- Users can register, log in, and manage their profiles.
+- Aura points system tied to user profiles.
+- Badge tracking for completed Random Acts of Kindness (RAKs).
+
+### RAK Posting System:
+- Users can create RAK posts (either requests or offers).
+- RAK statuses: open, claimed, completed.
+- Users can attach media to RAKs.
+- Claiming a RAK: Users can claim and complete RAKs.
+
+### Aura Points and Levels:
+- Aura points awarded for completing RAKs.
+- Points-based progression system to calculate aura levels.
+
+### Pay It Forward:
+- Pay It Forward mechanism where users can receive extra aura points for performing an act of kindness after receiving one.
+
+### Badge System:
+- Badge milestones for completing RAKs, paying it forward, and aura level progression.
+- Badges awarded automatically based on actions (e.g., 10 RAKs completed, first Pay It Forward).
+
+### Notification System:
+- Notifications for when a RAK is claimed, completed, or paid forward.
+- Notifications for receiving badges and aura level increases.
+
+### Basic Permissions:
+- Restrict RAK edits to the owner.
+- Public/private visibility options for RAKs.
+
+### RAK Status Transitions:
+- Proper flow of statuses from open to claimed, then to completed.
+
+---
+
+## Nice-to-Have Features:
+
+### Social Features:
+- Ability to follow other users and see their RAKs in a feed.
+- Like and comment functionality on RAK posts.
+
+### Leaderboard:
+- Global or local leaderboard showing top contributors based on aura points or completed RAKs.
+
+### Group Acts:
+- Support for group RAKs where multiple users can collaborate on larger acts of kindness.
+
+### Challenges and Achievements:
+- Weekly or monthly challenges to encourage user engagement.
+- Special badges for completing challenges.
+
+### Map Feature:
+- A map showing where RAKs have been performed (global or local acts of kindness).
+
+### Post Anonymity:
+- Users can post RAKs anonymously.
+
+### Enhanced Notification System:
+- Push notifications for mobile devices.
+- In-app notifications with different notification types (e.g., reminders, challenge alerts).
+
+### Advanced Analytics for Admins:
+- Admin dashboard showing trends in kindness (e.g., types of acts, most active regions, etc.).
+
 ### Aura Levels
 
 1. **Generator (The Masterful Creator)**: Warm Yellow or Golden Aura, signifying the power to start and sustain acts of kindness.
