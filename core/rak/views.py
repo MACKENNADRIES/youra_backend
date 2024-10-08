@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework import status, permissions
 from django.http import Http404
 from .models import RAKPost, ClaimedRAK, ClaimAction
@@ -102,3 +103,20 @@ class PayItForwardView(APIView):
             original_rak.pay_it_forward()  # Mark original RAK as paid forward
             return Response({'status': 'Pay It Forward created successfully'}, status=status.HTTP_201_CREATED)
         return Response({'error': 'Original RAK is not completed'}, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClaimList(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        claims = ClaimedRAK.objects.all()
+        serializer = ClaimedRAKSerializer(claims, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        # Validate and save the new claim
+        serializer = ClaimedRAKSerializer(data=request.data)
+        if serializer.is_valid():
+            # Automatically set the claimant to the logged-in user
+            serializer.save(claimant=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
