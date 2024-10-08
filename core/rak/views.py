@@ -87,3 +87,18 @@ class ClaimActionList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PayItForwardView(APIView):
+    def post(self, request, pk):
+        original_rak = RAKPost.objects.get(pk=pk)
+        if original_rak.is_completed:
+            new_rak = RAKPost(
+                user=request.user,
+                description=request.data.get('description'),
+                is_paid_forward=True
+            )
+            new_rak.save()
+            original_rak.pay_it_forward()  # Mark original RAK as paid forward
+            return Response({'status': 'Pay It Forward created successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'error': 'Original RAK is not completed'}, status=status.HTTP_400_BAD_REQUEST)
