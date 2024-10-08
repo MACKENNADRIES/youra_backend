@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from .utils import get_aura_level
 
@@ -41,17 +42,26 @@ class RAKPost(models.Model):
             raise ValueError("This RAK cannot be claimed because it has already been claimed or completed.")
         self.status = 'claimed'
         self.save()
-        
+
         ClaimedRAK.objects.create(rak=self, claimant=user)
 
-    # Awarding aura points for completed RAKs
+    def complete_rak(self):
+            if self.status == 'completed':
+                return
+            self.status = 'completed'
+            self.is_completed = timezone.now()
+            self.award_aura_points()  # Call to award aura points
+            self.save()
+
     def award_aura_points(self):
         if self.status == 'completed':
-            raise ValueError("Aura points have already been awarded for this RAK.")
-        user_profile = self.user.userprofile
-        user_profile.aura_points += self.aura_points
-        user_profile.calculate_level()
-        user_profile.save()
+            user_profile = self.user.userprofile
+            user_profile.aura_points += self.aura_points  # Award aura points
+            user_profile.calculate_level()  # Update aura level
+            user_profile.save()
+
+        else:
+            raise ValueError("Aura points can only be awarded once the RAK is completed.")
 
     # Handle Pay It Forward
     def pay_it_forward(self):
@@ -75,15 +85,23 @@ class RAKPost(models.Model):
         self.status = new_status
         self.save()
 
+    def save(self, *args, **kwargs):
+        if RAKPost.objects.filter(user=self.user, description=self.description, created_at__gte=timezone.now() - timedelta(minutes=10)).exists():
+            raise ValueError("You have already posted a similar RAK recently.")
+        super().save(*args, **kwargs)
+
 class ClaimedRAK(models.Model):
     rak = models.OneToOneField(RAKPost, on_delete=models.CASCADE, related_name='claimed_rak')
     claimant = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
+        User, 
+        on_delete=models.CASCADE, 
         related_name='claimed_raks'
     )
     claimed_at = models.DateTimeField(auto_now_add=True)
     details = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Claimed RAK by {self.claimant.username} on {self.claimed_at}"
 
 class ClaimAction(models.Model):
     claimed_rak = models.ForeignKey(ClaimedRAK, on_delete=models.CASCADE, related_name='actions')
@@ -93,12 +111,13 @@ class ClaimAction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
-    def mark_completed(self):
-        if not self.completed:
-            self.completed = True
-            self.completed_at = timezone.now()
-            self.save()
-
+def mark_completed(self):
+    if self.completed:
+        raise ValueError("This action is already completed.")
+    self.completed = True
+    self.completed_at = timezone.now()
+    self.save()
+    
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)

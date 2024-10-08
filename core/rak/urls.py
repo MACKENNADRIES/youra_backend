@@ -6,4 +6,5 @@ urlpatterns = [
     path('rakposts/<int:pk>/', RAKPostDetail.as_view(), name='rakpost-detail'),
     path('claimedraks/', ClaimedRAKList.as_view(), name='claimedrak-list'),
     path('claimactions/', ClaimActionList.as_view(), name='claimaction-list'),
+    
 ]

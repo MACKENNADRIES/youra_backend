@@ -22,13 +22,22 @@ class RAKPostSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class ClaimedRAKSerializer(serializers.ModelSerializer):
-    rak = serializers.ReadOnlyField(source='rak.id')  # Add read-only field for related RAKPost
-    claimant = serializers.ReadOnlyField(source='claimant.id')  # Claimant read-only
+class ClaimedRAKListSerializer(serializers.ModelSerializer):
+    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
+    rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
+
+    class Meta:
+        model = ClaimedRAK
+        fields = ['id', 'rak', 'claimant', 'claimed_at']
+
+class ClaimedRAKDetailSerializer(serializers.ModelSerializer):
+    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
+    rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
 
     class Meta:
         model = ClaimedRAK
         fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
+
 
 class ClaimActionSerializer(serializers.ModelSerializer):
     claimed_rak = serializers.ReadOnlyField(source='claimed_rak.id')  # Add read-only field for related ClaimedRAK
