@@ -17,8 +17,10 @@ The app fosters a supportive environment where users can track their impact, con
   - As a user, I want to post an offer to perform an act of kindness so that others can benefit.
   - As a user, I want to request help through a Random Act of Kindness when I need support.
   - As a user, I want to claim an existing offer so I can help someone in need.
-  - As a user, I want to earn aura points and badges for completing acts of kindness to track my contributions.
+  - As a user, I want to earn aura points and badges for completing acts of kindness to track 
+  my contributions.
   - As a user, I want to follow other users who inspire me, and view their RAK contributions.
+  - As a user, when I have benefited from a Random Act of Kindness I want to be able to Pay it Forward to the next person. 
 
 ### Front End Pages/Functionality
 - **Home Page**
@@ -52,9 +54,13 @@ The app fosters a supportive environment where users can track their impact, con
 | `/api/claimedraks/<pk>/`      | PUT         | Update the status of a claimed RAK       | `{ status, completed }`               | 200                   | Claimant only                 |
 | `/api/claimactions/`          | GET         | List all claim actions                   | None                                  | 200                   | None                          |
 | `/api/claimactions/`          | POST        | Create a new claim action                | `{ claimed_rak_id, action_type }`     | 201                   | Authenticated users only      |
+| `/api/payitforward/`          | GET         | List Pay It Forward opportunities        | None                                  | 200                   | None                          |
+| `/api/payitforward/`          | POST        | Create a Pay It Forward act              | `{ original_rak_id, description }`    | 201                   | Authenticated users only      |
+| `/api/payitforward/<pk>/`     | GET         | Retrieve a specific Pay It Forward       | None                                  | 200                   | None                          |
+| `/api/aura/`                  | GET         | Retrieve current aura points and level   | None                                  | 200                   | Authenticated users only      |
+| `/api/aura/leaderboard/`      | GET         | List top users by aura points            | None                                  | 200                   | None                          |
 | `/api/users/`                 | GET         | List all users                           | None                                  | 200                   | Admin only                    |
 | `/api/users/<pk>/`            | GET         | Retrieve user profile                    | None                                  | 200                   | Authenticated users only      |
-| `/api/users/<pk>/`            | PUT         | Update user profile                      | `{ bio, profile_image, aura_points }` | 200                   | Profile owner only            |
 | `/api/users/<pk>/followers/`  | GET         | List user’s followers                    | None                                  | 200                   | Authenticated users only      |
 | `/api/users/<pk>/follow/`     | POST        | Follow another user                     | None                                  | 201                   | Authenticated users only      |
 | `/api/users/<pk>/unfollow/`   | POST        | Unfollow a user                          | None                                  | 204                   | Authenticated users only      |
@@ -70,7 +76,9 @@ The app fosters a supportive environment where users can track their impact, con
 | `/api/comments/<pk>/`         | PUT         | Edit a comment                           | `{ content }`                         | 200                   | Comment owner only            |
 | `/api/comments/<pk>/`         | DELETE      | Delete a comment                         | None                                  | 204                   | Comment owner only            |
 | `/api/likes/`                 | POST        | Like a RAK post                          | `{ rak_id }`                          | 201                   | Authenticated users only      |
-| `/api/likes/<pk>/`            | DELETE      | Unlike a RAK post    
+| `/api/likes/<pk>/`            | DELETE      | Unlike a RAK post                        | None                                  | 204                   | Authenticated users only      |
+
+
 
 ### DB Schema
 ![]( ../class.png)
