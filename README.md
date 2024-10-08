@@ -81,7 +81,7 @@ The app fosters a supportive environment where users can track their impact, con
 
 
 ### DB Schema
-![]( ../class.png)
+![](core/class.png)
 
 ### Aura Levels
 
