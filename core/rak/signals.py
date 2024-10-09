@@ -1,18 +1,18 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import RAKPost, UserProfile, Badge, Notification, ClaimedRAK
+from .models import RandomActOfKindness, UserProfile, Badge, Notification, RAKClaim
 
-@receiver(post_save, sender=RAKPost)
+@receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
-    # Handle aura points when RAK is completed
-    if instance.is_completed and not instance.is_paid_forward:
-        user_profile = instance.user.userprofile
+    # Handle aura points when RandomActOfKindness is completed
+    if instance.completed_at and not instance.is_paid_forward:
+        user_profile = instance.creator.userprofile
         user_profile.aura_points += instance.aura_points  # Use correct field name for aura points
         user_profile.calculate_level()  # Update aura level
         user_profile.save()
 
-        # Award badges based on completed RAK milestones
-        completed_raks = RAKPost.objects.filter(user=instance.user, is_completed=True).count()
+        # Award badges based on completed Random Acts of Kindness milestones
+        completed_raks = RandomActOfKindness.objects.filter(creator=instance.creator, completed_at__isnull=False).count()
         if completed_raks >= 1:
             badge, _ = Badge.objects.get_or_create(
                 name="First RAK Completed", 
@@ -44,8 +44,8 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
     # Handle Pay It Forward logic
     if instance.is_paid_forward:
         # Ensure the RAK has been claimed
-        if hasattr(instance, 'claimed_rak'):
-            claimant_profile = instance.claimed_rak.claimant.userprofile
+        if hasattr(instance, 'rak_claim'):
+            claimant_profile = instance.rak_claim.claimant.userprofile
             bonus_points = 15  # Define bonus points for Pay It Forward
             claimant_profile.aura_points += bonus_points
             claimant_profile.calculate_level()
@@ -53,9 +53,9 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
 
     # Send notifications
     if instance.status == 'claimed':
-        message = f"Your Random Act of Kindness has been claimed by {instance.claimed_rak.claimant.username}."
-        Notification.objects.create(recipient=instance.user, message=message)
+        message = f"Your Random Act of Kindness has been claimed by {instance.rak_claim.claimant.username}."
+        Notification.objects.create(recipient=instance.creator, message=message)
 
-    if instance.is_completed:
+    if instance.completed_at:
         message = f"Your Random Act of Kindness has been completed."
-        Notification.objects.create(recipient=instance.user, message=message)
+        Notification.objects.create(recipient=instance.creator, message=message)

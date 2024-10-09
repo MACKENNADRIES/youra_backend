@@ -2,48 +2,50 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework import status, permissions
+from rest_framework import status
 from django.http import Http404
-from .models import RAKPost, ClaimedRAK, ClaimAction
-from .serializers import RAKPostSerializer, ClaimActionSerializer, ClaimedRAKListSerializer, ClaimedRAKDetailSerializer
+from .models import RandomActOfKindness, RAKClaim, ClaimAction
+from .serializers import RandomActOfKindnessSerializer, ClaimActionSerializer, RAKClaimListSerializer, RAKClaimDetailSerializer
 from .permissions import IsOwnerOrReadOnly, IsClaimantOrReadOnly
 
-# View for listing and creating RAKPost instances
-class RAKPostList(APIView):
+
+# View for listing and creating RandomActOfKindness instances
+class RandomActOfKindnessList(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
     
     def get(self, request):
-        rak_posts = RAKPost.objects.all()
-        serializer = RAKPostSerializer(rak_posts, many=True)
+        rak_posts = RandomActOfKindness.objects.all()
+        serializer = RandomActOfKindnessSerializer(rak_posts, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = RAKPostSerializer(data=request.data)
+        serializer = RandomActOfKindnessSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(owner=request.user)  # Set owner to the authenticated user
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# View for retrieving, updating, or deleting a specific RAKPost instance
-class RAKPostDetail(APIView):
+
+# View for retrieving, updating, or deleting a specific RandomActOfKindness instance
+class RandomActOfKindnessDetail(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def get_object(self, pk):
         try:
-            rak_post = RAKPost.objects.get(pk=pk)
+            rak_post = RandomActOfKindness.objects.get(pk=pk)
             self.check_object_permissions(self.request, rak_post)  # Check custom permissions
             return rak_post
-        except RAKPost.DoesNotExist:
+        except RandomActOfKindness.DoesNotExist:
             raise Http404
 
     def get(self, request, pk):
         rak_post = self.get_object(pk)
-        serializer = RAKPostSerializer(rak_post)
+        serializer = RandomActOfKindnessSerializer(rak_post)
         return Response(serializer.data)
 
     def put(self, request, pk):
         rak_post = self.get_object(pk)
-        serializer = RAKPostSerializer(
+        serializer = RandomActOfKindnessSerializer(
             instance=rak_post,
             data=request.data,
             partial=True  # Allow partial updates
@@ -58,45 +60,48 @@ class RAKPostDetail(APIView):
         rak_post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-# View for listing and creating ClaimedRAK instances
-class ClaimedRAKList(APIView):
+
+# View for listing and creating RAKClaim instances
+class RAKClaimList(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
-        claimed_raks = ClaimedRAK.objects.all()
-        serializer = ClaimedRAKListSerializer(claimed_raks, many=True)
+        claimed_raks = RAKClaim.objects.all()
+        serializer = RAKClaimListSerializer(claimed_raks, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = ClaimedRAKListSerializer(data=request.data)
+        serializer = RAKClaimListSerializer(data=request.data)
         if serializer.is_valid():
             # Save the claim with the current user as the claimant
             claimed_rak = serializer.save(claimant=request.user)
-            # Update the RAKPost status to 'claimed'
+            # Update the RandomActOfKindness status to 'claimed'
             claimed_rak.rak.status = 'claimed'
             claimed_rak.rak.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# View for retrieving, updating, or deleting a specific ClaimedRAK instance
-class ClaimedRAKDetail(APIView):
+
+# View for retrieving, updating, or deleting a specific RAKClaim instance
+class RAKClaimDetail(APIView):
     permission_classes = [IsClaimantOrReadOnly]
 
     def get_object(self, pk):
-        return get_object_or_404(ClaimedRAK, pk=pk)
+        return get_object_or_404(RAKClaim, pk=pk)
 
     def get(self, request, pk):
         claimed_rak = self.get_object(pk)
-        serializer = ClaimedRAKDetailSerializer(claimed_rak)
+        serializer = RAKClaimDetailSerializer(claimed_rak)
         return Response(serializer.data)
 
     def put(self, request, pk):
         claimed_rak = self.get_object(pk)
-        serializer = ClaimedRAKDetailSerializer(claimed_rak, data=request.data, partial=True)
+        serializer = RAKClaimDetailSerializer(claimed_rak, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 # View for listing and creating ClaimAction instances
 class ClaimActionList(APIView):
@@ -112,12 +117,13 @@ class ClaimActionList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 # View for handling the Pay It Forward mechanism
 class PayItForwardView(APIView):
     def post(self, request, pk):
-        original_rak = RAKPost.objects.get(pk=pk)
-        if original_rak.is_completed:
-            new_rak = RAKPost(
+        original_rak = RandomActOfKindness.objects.get(pk=pk)
+        if original_rak.completed_at:
+            new_rak = RandomActOfKindness(
                 user=request.user,
                 description=request.data.get('description'),
                 is_paid_forward=True
@@ -127,16 +133,16 @@ class PayItForwardView(APIView):
             return Response({'status': 'Pay It Forward created successfully'}, status=status.HTTP_201_CREATED)
         return Response({'error': 'Original RAK is not completed'}, status=status.HTTP_400_BAD_REQUEST)
 
-# View for handling claims on RAKs
+
+# View for handling claims on Random Acts of Kindness
 class ClaimRAKView(APIView):
     def post(self, request, rak_id):
         try:
-            rak = RAKPost.objects.get(id=rak_id)
+            rak = RandomActOfKindness.objects.get(id=rak_id)
             # Call the claim_rak method which includes the logic to check if it's still open
             rak.claim_rak(request.user)
             return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
-        except RAKPost.DoesNotExist:
+        except RandomActOfKindness.DoesNotExist:
             return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-

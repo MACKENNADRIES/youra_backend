@@ -6,8 +6,8 @@ from .utils import get_aura_level
 
 User = get_user_model()
 
-class RAKPost(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class RandomActOfKindness(models.Model):
+    creator = models.ForeignKey(User, on_delete=models.CASCADE)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_posts')
 
     STATUS_CHOICES = [
@@ -33,7 +33,7 @@ class RAKPost(models.Model):
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
     post_type = models.CharField(max_length=10, choices=POST_TYPE_CHOICES)
     aura_points = models.PositiveIntegerField(default=10)
-    is_completed = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
     is_paid_forward = models.BooleanField(default=False)
 
     # Method to handle claiming of RAK
@@ -43,23 +43,22 @@ class RAKPost(models.Model):
         self.status = 'claimed'
         self.save()
 
-        ClaimedRAK.objects.create(rak=self, claimant=user)
+        RAKClaim.objects.create(rak=self, claimant=user)
 
     def complete_rak(self):
-            if self.status == 'completed':
-                return
-            self.status = 'completed'
-            self.is_completed = timezone.now()
-            self.award_aura_points()  # Call to award aura points
-            self.save()
+        if self.status == 'completed':
+            return
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        self.award_aura_points()
+        self.save()
 
     def award_aura_points(self):
         if self.status == 'completed':
-            user_profile = self.user.userprofile
+            user_profile = self.creator.userprofile
             user_profile.aura_points += self.aura_points  # Award aura points
-            user_profile.calculate_level()  # Update aura level
+            user_profile.calculate_level()
             user_profile.save()
-
         else:
             raise ValueError("Aura points can only be awarded once the RAK is completed.")
 
@@ -72,13 +71,12 @@ class RAKPost(models.Model):
         self.award_pay_it_forward_bonus()
 
     def award_pay_it_forward_bonus(self):
-        claimant_profile = self.claimed_rak.claimant.userprofile
+        claimant_profile = self.rak_claim.claimant.userprofile
         bonus_points = 15
         claimant_profile.aura_points += bonus_points
         claimant_profile.calculate_level()
         claimant_profile.save()
 
-    # Method to update status with validation
     def update_status(self, new_status):
         if self.status == 'completed':
             raise ValueError("Cannot update a completed RAK.")
@@ -86,38 +84,37 @@ class RAKPost(models.Model):
         self.save()
 
     def save(self, *args, **kwargs):
-        if RAKPost.objects.filter(user=self.user, description=self.description, created_at__gte=timezone.now() - timedelta(minutes=10)).exists():
+        if RandomActOfKindness.objects.filter(creator=self.creator, description=self.description, created_at__gte=timezone.now() - timedelta(minutes=10)).exists():
             raise ValueError("You have already posted a similar RAK recently.")
         super().save(*args, **kwargs)
 
-class ClaimedRAK(models.Model):
-    rak = models.OneToOneField(RAKPost, on_delete=models.CASCADE, related_name='claimed_rak')
-    claimant = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
-        related_name='claimed_raks'
-    )
+
+class RAKClaim(models.Model):
+    rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
+    claimant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_claims')
     claimed_at = models.DateTimeField(auto_now_add=True)
     details = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"Claimed RAK by {self.claimant.username} on {self.claimed_at}"
+        return f"RAK claimed by {self.claimant.username} on {self.claimed_at}"
+
 
 class ClaimAction(models.Model):
-    claimed_rak = models.ForeignKey(ClaimedRAK, on_delete=models.CASCADE, related_name='actions')
+    rak_claim = models.ForeignKey(RAKClaim, on_delete=models.CASCADE, related_name='actions')
     action_type = models.CharField(max_length=50)
     description = models.TextField()
     completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
-def mark_completed(self):
-    if self.completed:
-        raise ValueError("This action is already completed.")
-    self.completed = True
-    self.completed_at = timezone.now()
-    self.save()
-    
+    def mark_completed(self):
+        if self.completed:
+            raise ValueError("This action is already completed.")
+        self.completed = True
+        self.completed_at = timezone.now()
+        self.save()
+        
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)
@@ -128,7 +125,7 @@ class UserProfile(models.Model):
         self.aura_color = aura_info['color']
         self.save()
 
-# Badge Model
+
 class Badge(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -137,7 +134,7 @@ class Badge(models.Model):
     def __str__(self):
         return self.name
 
-# Notification Model
+
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
