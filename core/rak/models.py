@@ -40,6 +40,11 @@ class RandomActOfKindness(models.Model):
     def claim_rak(self, user):
         if self.status != 'open':
             raise ValueError("This RAK cannot be claimed because it has already been claimed or completed.")
+        
+        # Prevent the owner from claiming their own RAK
+        if self.creator == user:
+            raise ValueError("You cannot claim your own RAK.")
+        
         self.status = 'claimed'
         self.save()
 
@@ -83,10 +88,17 @@ class RandomActOfKindness(models.Model):
         self.status = new_status
         self.save()
 
-    def save(self, *args, **kwargs):
-        if RandomActOfKindness.objects.filter(creator=self.creator, description=self.description, created_at__gte=timezone.now() - timedelta(minutes=10)).exists():
+def save(self, *args, **kwargs):
+    # Only apply the validation check for new RAKs, not when updating existing ones
+    if self._state.adding:  # This checks if the instance is being created
+        if RandomActOfKindness.objects.filter(
+            creator=self.creator, 
+            description=self.description, 
+            created_at__gte=timezone.now() - timedelta(minutes=10)
+        ).exists():
             raise ValueError("You have already posted a similar RAK recently.")
-        super().save(*args, **kwargs)
+    
+    super().save(*args, **kwargs)
 
 
 class RAKClaim(models.Model):

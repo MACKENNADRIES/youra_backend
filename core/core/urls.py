@@ -17,12 +17,23 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from users.views import CustomAuthToken
+from rak.views import UpdateRAKStatusView
 
 urlpatterns = [
+    # Admin URL
     path('admin/', admin.site.urls),
-    path('rak/', include('rak.urls')),
-    path('users/', include('users.urls')),
-    path('api-auth/', include('rest_framework.urls')),
-    path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'),
-]
 
+    # Include URLs from the 'rak' app
+    path('rak/', include('rak.urls')),
+
+    # Include URLs from the 'users' app
+    path('users/', include('users.urls')),
+
+    # Django REST Framework login and logout views for the browsable API
+    path('api-auth/', include('rest_framework.urls')),
+
+    # Token-based authentication for API access
+    path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'),
+
+    path('rakposts/<int:pk>/status/', UpdateRAKStatusView.as_view(), name='update-rak-status'),
+]

@@ -18,14 +18,28 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
         instance.completed_at = validated_data.get('completed_at', instance.completed_at)
         instance.save()
         return instance
-
-class RAKClaimListSerializer(serializers.ModelSerializer):
+    
+class RAKClaimSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
     rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
 
     class Meta:
         model = RAKClaim
-        fields = ['id', 'rak', 'claimant', 'claimed_at']
+        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
+
+    def update(self, instance, validated_data):
+        # Update fields in the RAKClaim instance
+        instance.details = validated_data.get('details', instance.details)
+        instance.save()
+        return instance
+
+class RAKClaimListSerializer(serializers.ModelSerializer):
+    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
+    rak = serializers.PrimaryKeyRelatedField(queryset=RandomActOfKindness.objects.all())  # Add rak field here
+
+    class Meta:
+        model = RAKClaim
+        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
 
 class RAKClaimDetailSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
@@ -36,8 +50,8 @@ class RAKClaimDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
 
 class ClaimActionSerializer(serializers.ModelSerializer):
-    claimed_rak = serializers.ReadOnlyField(source='claimed_rak.id')  # Add read-only field for related RAKClaim
+    rak_claim = serializers.PrimaryKeyRelatedField(queryset=RAKClaim.objects.all())
 
     class Meta:
         model = ClaimAction
-        fields = ['id', 'claimed_rak', 'action_type', 'description', 'completed', 'created_at', 'completed_at']
+        fields = ['id', 'rak_claim', 'action_type', 'description', 'completed', 'created_at', 'completed_at']
