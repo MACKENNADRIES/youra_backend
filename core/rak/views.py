@@ -181,26 +181,39 @@ class ClaimRAKView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+class CompleteRAKView(APIView):
+    def post(self, request, rak_id):
+        try:
+            rak = RandomActOfKindness.objects.get(id=rak_id)
+            # Call the claim_rak method which includes the logic to check if it's still open
+            rak.complete_rak(request.user)
+            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
+        except RandomActOfKindness.DoesNotExist:
+            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-class UpdateRAKStatusView(APIView):
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Only allow authenticated users and apply the permissions
 
-    def patch(self, request, pk):
-        # Retrieve the RAK object using the primary key (pk)
-        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+
+# class UpdateRAKStatusView(APIView):
+#     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Only allow authenticated users and apply the permissions
+
+#     def patch(self, request, pk):
+#         # Retrieve the RAK object using the primary key (pk)
+#         rak = get_object_or_404(RandomActOfKindness, pk=pk)
+
+#         # Check if the user has permission to change the status
+#         self.check_object_permissions(request, rak)
+
+#         # Extract the new status from the request data
+#         new_status = request.data.get('status')
         
-        # Check if the user has permission to change the status
-        self.check_object_permissions(request, rak)
+#         if new_status:
+#             # Update the status of the RAK
+#             try:
+#                 rak.update_status(new_status)
+#                 return Response({"message": "Status updated successfully"}, status=status.HTTP_200_OK)
+#             except ValueError as e:
+#                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Extract the new status from the request data
-        new_status = request.data.get('status')
-        
-        if new_status:
-            # Update the status of the RAK
-            try:
-                rak.update_status(new_status)
-                return Response({"message": "Status updated successfully"}, status=status.HTTP_200_OK)
-            except ValueError as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
+#         return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)

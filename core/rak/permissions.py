@@ -11,6 +11,17 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         # Only allow write access if the user is the owner or creator of the RAK
         return obj.owner == request.user or obj.creator == request.user
 
+# class IsOwnerOrClaimant(permissions.BasePermission):
+#     """
+#     Custom permission to allow the owner or the claimant to modify the Rak status
+#     """
+#     def has_object_permission(self, request, view, obj):
+#         # SAFE_METHODS include GET, HEAD, OPTIONS (read-only methods)
+#         if request.method in permissions.SAFE_METHODS:
+#             return True
+#         return obj.owner == request.user or obj.claimant == request.user
+
+
 
 class IsClaimantOrReadOnly(permissions.BasePermission):
     """
