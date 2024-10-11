@@ -8,6 +8,8 @@ from datetime import timezone
 from .models import RandomActOfKindness, RAKClaim, ClaimAction
 from .serializers import RandomActOfKindnessSerializer, RAKClaimSerializer, ClaimActionSerializer, RAKClaimListSerializer
 from .permissions import IsOwnerOrReadOnly, IsClaimantOrReadOnly
+# View for listing and creating RAKClaim instances
+from rest_framework.permissions import IsAuthenticated
 
 # View for listing and creating RandomActOfKindness instances
 class RandomActOfKindnessList(APIView):
@@ -62,8 +64,7 @@ class RandomActOfKindnessDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# View for listing and creating RAKClaim instances
-from rest_framework.permissions import IsAuthenticated
+
 
 class RAKClaimList(APIView):
     # Require users to be authenticated to interact with this view
@@ -134,6 +135,34 @@ class ClaimActionList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# View for handling claims on Random Acts of Kindness
+class ClaimRAKView(APIView):
+    def post(self, request, rak_id):
+        print("hi")
+        try:
+            rak = RandomActOfKindness.objects.get(id=rak_id)
+            # Call the claim_rak method which includes the logic to check if it's still open
+            rak.claim_rak(request.user)
+            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
+        except RandomActOfKindness.DoesNotExist:
+            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class CompleteRAKView(APIView):
+    def post(self, request, rak_id):
+        try:
+            rak = RandomActOfKindness.objects.get(id=rak_id)
+            # Call the claim_rak method which includes the logic to check if it's still open
+            rak.complete_rak()
+            return Response({"message": "RAK completed successfully."}, status=status.HTTP_200_OK)
+        except RandomActOfKindness.DoesNotExist:
+            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class PayItForwardView(APIView):
     permission_classes = [IsAuthenticated]  # Only allow authenticated users
 
@@ -166,32 +195,6 @@ class PayItForwardView(APIView):
         return Response({'error': 'Original RAK is not completed.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-# View for handling claims on Random Acts of Kindness
-class ClaimRAKView(APIView):
-    def post(self, request, rak_id):
-        try:
-            rak = RandomActOfKindness.objects.get(id=rak_id)
-            # Call the claim_rak method which includes the logic to check if it's still open
-            rak.claim_rak(request.user)
-            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
-        except RandomActOfKindness.DoesNotExist:
-            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-class CompleteRAKView(APIView):
-    def post(self, request, rak_id):
-        try:
-            rak = RandomActOfKindness.objects.get(id=rak_id)
-            # Call the claim_rak method which includes the logic to check if it's still open
-            rak.complete_rak(request.user)
-            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
-        except RandomActOfKindness.DoesNotExist:
-            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 

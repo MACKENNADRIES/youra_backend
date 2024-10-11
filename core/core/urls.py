@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from users.views import CustomAuthToken
-from rak.views import UpdateRAKStatusView
+# from rak.views import UpdateRAKStatusView
 
 urlpatterns = [
     # Admin URL
@@ -35,5 +35,5 @@ urlpatterns = [
     # Token-based authentication for API access
     path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'),
 
-    path('rakposts/<int:pk>/status/', UpdateRAKStatusView.as_view(), name='update-rak-status'),
+    # path('rakposts/<int:pk>/status/', UpdateRAKStatusView.as_view(), name='update-rak-status'),
 ]

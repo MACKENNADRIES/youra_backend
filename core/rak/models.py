@@ -100,6 +100,11 @@ def save(self, *args, **kwargs):
     
     super().save(*args, **kwargs)
 
+class PayItForward(models.Model):
+    original_rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='original_rak')
+    new_rak = models.ForeignKey(RandomActOfKindness, on_delete=models.CASCADE, related_name='pay_it_forward_rak')
+    bonus_points = models.PositiveIntegerField(default=15)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class RAKClaim(models.Model):
     rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
