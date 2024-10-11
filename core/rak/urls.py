@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RandomActOfKindnessList, RandomActOfKindnessDetail, RAKClaimList, RAKClaimDetail, ClaimActionList, PayItForwardView, ClaimRAKView, CompleteRAKView
+from .views import RandomActOfKindnessList, RandomActOfKindnessDetail, RAKClaimList, RAKClaimDetail, ClaimActionList, PayItForwardView, ClaimRAKView, CompleteRAKView, UserProfileView, UserProfileListView
 
 urlpatterns = [
     path('rakposts/', RandomActOfKindnessList.as_view(), name='rakpost-list'),
@@ -12,4 +12,6 @@ urlpatterns = [
     path('rakposts/<int:rak_id>/claim/', ClaimRAKView.as_view(), name='claim-rak'),
     # URL for completing a Random Act of Kindness
     path('rakposts/<int:rak_id>/complete/', CompleteRAKView.as_view(), name='complete-rak'),
+    path('userprofile/', UserProfileView.as_view(), name='user-profile'),
+    path('userprofiles/', UserProfileListView.as_view(), name='user-profiles'),
 ]

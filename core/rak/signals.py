@@ -1,6 +1,10 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import RandomActOfKindness, UserProfile, Badge, Notification, RAKClaim
+from django.contrib.auth import get_user_model
+from .models import RandomActOfKindness, UserProfile, Badge, Notification
+
+# Get the correct User model
+User = get_user_model()
 
 @receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
@@ -59,3 +63,12 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
     if instance.completed_at:
         message = f"Your Random Act of Kindness has been completed."
         Notification.objects.create(recipient=instance.creator, message=message)
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    instance.userprofile.save()

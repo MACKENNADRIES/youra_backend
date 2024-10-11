@@ -1,11 +1,11 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework import status
 from django.http import Http404
 from datetime import timezone
-from .models import RandomActOfKindness, RAKClaim, ClaimAction
+from .models import RandomActOfKindness, RAKClaim, ClaimAction, UserProfile
 from .serializers import RandomActOfKindnessSerializer, RAKClaimSerializer, ClaimActionSerializer, RAKClaimListSerializer
 from .permissions import IsOwnerOrReadOnly, IsClaimantOrReadOnly
 # View for listing and creating RAKClaim instances
@@ -194,9 +194,36 @@ class PayItForwardView(APIView):
             return Response({'status': 'Pay It Forward created successfully'}, status=status.HTTP_201_CREATED)
         return Response({'error': 'Original RAK is not completed.'}, status=status.HTTP_400_BAD_REQUEST)
 
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user_profile = UserProfile.objects.get(user=request.user)
+        data = {
+            "username": request.user.username,  # Include username
+            "email": request.user.email,        # Optional: Include email if needed
+            "aura_points": user_profile.aura_points,
+            "aura_level": user_profile.aura_level,
+            "aura_color": user_profile.aura_color
+        }
+        return Response(data, status=200)
+    
+class UserProfileListView(APIView):
+    permission_classes = [IsAdminUser]
 
-
+    def get(self, request):
+        profiles = UserProfile.objects.all()
+        data = [
+            {
+                "username": profile.user.username,
+                "email": profile.user.email,
+                "aura_points": profile.aura_points,
+                "aura_level": profile.aura_level,
+                "aura_color": profile.aura_color
+            }
+            for profile in profiles
+        ]
+        return Response(data, status=200)
 
 # class UpdateRAKStatusView(APIView):
 #     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Only allow authenticated users and apply the permissions

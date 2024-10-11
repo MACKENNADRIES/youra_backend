@@ -135,6 +135,8 @@ class ClaimAction(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)
+    aura_level = models.CharField(max_length=255, default="Beginner")  # Add this field
+    aura_color = models.CharField(max_length=50, default="Blue")  # Add this field
 
     def calculate_level(self):
         aura_info = get_aura_level(self.aura_points)
