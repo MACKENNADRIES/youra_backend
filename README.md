@@ -1,18 +1,18 @@
 # YOURA (Your - Aura)
 
-Mackenna
+Mackenna Dries 
 
 ## Planning:
 
 ### Concept/Name
-**YOURA** is a social media platform designed to inspire and promote kindness through Random Acts of Kindness (RAKs). Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars or badges.
+**YOURA** is a platform designed to inspire and promote kindness through Random Acts of Kindness (RAKs). Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
 
 The app integrates social media features, allowing users to follow others, share posts, upload media, and comment on acts of kindness. It encourages users to pay it forward after receiving a RAK, ensuring that kindness spreads throughout the community. With a focus on positive interactions, users can take part in kindness challenges, earn achievements, and build an inspiring feed of their contributions.
 
 The app fosters a supportive environment where users can track their impact, connect with like-minded individuals, and share their journey toward making the world a kinder place, all while maintaining privacy and control over their profiles and posts.
 
 ### Intended Audience/User Stories
-- **Intended Audience**: The intended audience for YOURA includes individuals who are passionate about community service, random acts of kindness, and social responsibility.
+- **Intended Audience**: The intended audience for YOURA includes individuals who want a social media platform that does good and promotes positivity, through random acts of kindness, and social responsibility.
 - **User Stories**:
   - As a user, I want to post an offer to perform an act of kindness so that others can benefit.
   - As a user, I want to request help through a Random Act of Kindness when I need support.
@@ -21,6 +21,8 @@ The app fosters a supportive environment where users can track their impact, con
   my contributions.
   - As a user, I want to follow other users who inspire me, and view their RAK contributions.
   - As a user, when I have benefited from a Random Act of Kindness I want to be able to Pay it Forward to the next person. 
+  - As a user, I want to follow my friends and have a curated feed of their posts. 
+  - As a user I want to acces an 'explore page' with RAK's from people I don't know. 
 
 ### Front End Pages/Functionality
 - **Home Page**
@@ -38,6 +40,22 @@ The app fosters a supportive environment where users can track their impact, con
   - Shows the user's history of RAKs (offers and requests).
   - Displays earned badges and aura levels.
   - Users can edit their profile details.
+- **Feed**
+  -Shows the RAK's and activity of users you are following
+- **Explore Page**
+  -Shows random RAKs that you might be interested in (potentially based off ones you have interacted with/similar aura level)
+
+
+### Design Ideas
+- **The Look and Feel**
+  - ethereal look and feel - stardust, glowing auras 
+  - Login/Loading page with moving stars along lines 
+  - Feed Page 
+  - Discover Page 
+  - Profile 
+  - Aura details page 
+  - I think the base/background colour needs to be black or very close to for the colours to show up the best - maybe a nightime feel/stardust 
+
 
 ### API Spec
 
@@ -95,13 +113,19 @@ The app fosters a supportive environment where users can track their impact, con
 - RAK statuses: open, claimed, completed.
 - Users can attach media to RAKs.
 - Claiming a RAK: Users can claim and complete RAKs.
+- Raks have a title, description, media option and owner 
+
 
 ### Aura Points and Levels:
 - Aura points awarded for completing RAKs.
 - Points-based progression system to calculate aura levels.
+- A users profile picture/icon glows with their speciifed aura colour according to thier level
+- A users prfile displays thier badges next to their profile picturen
 
 ### Pay It Forward:
+- This feature is offered to users who request a RAK (I.e As a user I have requested someone to shout me a coffe, they did anf no I want to pay this forward and buy someone else a coffee. This then becomes an offer or if there is a simialr request out there iot gets offered to that one)
 - Pay It Forward mechanism where users can receive extra aura points for performing an act of kindness after receiving one.
+- Only offered to the requestee once a RAK has been completed.
 
 ### Badge System:
 - Badge milestones for completing RAKs, paying it forward, and aura level progression.
@@ -114,9 +138,24 @@ The app fosters a supportive environment where users can track their impact, con
 ### Basic Permissions:
 - Restrict RAK edits to the owner.
 - Public/private visibility options for RAKs.
+- Owner cannot claim their own RAK 
+- Only owner can delete pledge
+- Owner and Claimant can update the status - or should this be an event listener? 
 
+### Resolution Centre:
+- Uswers can report RAK's that were claimed and then unfulfilled 
+- Users can report inappropriate Raks/comments
+- Users can block other users
+- Users can report other users 
 ### RAK Status Transitions:
 - Proper flow of statuses from open to claimed, then to completed.
+
+### Actions on Posts:
+- All users are able to comment on RAK Posts. 
+- All users are able to like posts.
+
+### Post Anonymity:
+- Users can post RAKs anonymously.
 
 ---
 
@@ -125,6 +164,7 @@ The app fosters a supportive environment where users can track their impact, con
 ### Social Features:
 - Ability to follow other users and see their RAKs in a feed.
 - Like and comment functionality on RAK posts.
+- Ability to unfollow other users 
 
 ### Leaderboard:
 - Global or local leaderboard showing top contributors based on aura points or completed RAKs.
@@ -138,9 +178,6 @@ The app fosters a supportive environment where users can track their impact, con
 
 ### Map Feature:
 - A map showing where RAKs have been performed (global or local acts of kindness).
-
-### Post Anonymity:
-- Users can post RAKs anonymously.
 
 ### Enhanced Notification System:
 - Push notifications for mobile devices.
@@ -176,3 +213,36 @@ The app fosters a supportive environment where users can track their impact, con
    - **Analyzer**: Soft Grey - Processing feedback.
    - **Balancer**: Pearl White - Achieving harmony.
    - **Harmoniser**: Crystal White - Bringing balance.
+
+
+
+## Project Requirements
+Your crowdfunding project must:
+
+- [x] Be separated into two distinct projects: an API built using the Django Rest Framework and a website built using React. 
+- [x] Have a cool name, bonus points if it includes a pun and/or missing vowels. See https://namelix.com/ for inspiration. <sup><sup>(Bonus Points are meaningless)</sup></sup>
+- [x] Have a clear target audience.
+- [x] Have user accounts. A user should have at least the following attributes:
+  - [x] Username
+  - [x] Email address
+  - [x] Password
+- [x] Ability to create a “project” to be crowdfunded which will include at least the following attributes:
+  - [ ] Title
+  - [x] Owner (a user)
+  - [x] Description
+  - [x] Image
+  - [ ] Target amount to fundraise
+  - [x] Whether it is currently open to accepting new supporters or not
+  - [x] When the project was created
+- [ ] Ability to “pledge” to a project. A pledge should include at least the following attributes:
+  - [ ] An amount
+  - [ ] The project the pledge is for
+  - [x] The supporter/user (i.e. who created the pledge)
+  - [ ] Whether the pledge is anonymous or not
+  - [ ] A comment to go along with the pledge
+- [ ] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
+- [ ] Implement suitable permissions, e.g. who is allowed to delete a pledge?
+- [ ] Return the relevant status codes for both successful and unsuccessful requests to the API.
+- [ ] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
+- [ ] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
+- [ ] Implement responsive design.

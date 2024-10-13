@@ -65,10 +65,11 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
         Notification.objects.create(recipient=instance.creator, message=message)
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
+    else:
+        instance.userprofile.save()
 
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.userprofile.save()
+def send_notification(user, message):
+    Notification.objects.create(recipient=user, message=message)

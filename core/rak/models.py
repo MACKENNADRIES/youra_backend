@@ -3,6 +3,8 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from .utils import get_aura_level
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 User = get_user_model()
 
@@ -13,6 +15,7 @@ class RandomActOfKindness(models.Model):
     STATUS_CHOICES = [
         ('open', 'Open'),
         ('claimed', 'Claimed'),
+        ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
     ]
     
@@ -26,6 +29,7 @@ class RandomActOfKindness(models.Model):
         ('request', 'Request'),
     ]
 
+    title = models.TextField()
     description = models.TextField()
     media = models.FileField(upload_to='rak_media/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -56,6 +60,8 @@ class RandomActOfKindness(models.Model):
         self.status = 'completed'
         self.completed_at = timezone.now()
         self.award_aura_points()
+        self.award_badges()  # Call badge awarding logic here
+        self.send_notification("Your Random Act of Kindness has been completed.")  # Send notification
         self.save()
 
     def award_aura_points(self):
@@ -66,6 +72,27 @@ class RandomActOfKindness(models.Model):
             user_profile.save()
         else:
             raise ValueError("Aura points can only be awarded once the RAK is completed.")
+
+    # Badge awarding based on milestones
+    def award_badges(self):
+        completed_raks = RandomActOfKindness.objects.filter(creator=self.creator, completed_at__isnull=False).count()
+        badges = []
+        if completed_raks >= 1:
+            badges.append("First RAK Completed")
+        if completed_raks >= 10:
+            badges.append("10 RAKs Completed")
+        if completed_raks >= 50:
+            badges.append("50 RAKs Completed")
+        if completed_raks >= 100:
+            badges.append("100 RAKs Completed")
+
+        for badge in badges:
+            self.send_notification(f"Congrats! You've earned the '{badge}' badge.")
+        # Logic to track badges could be added here if necessary
+
+    # Sending notifications directly
+    def send_notification(self, message):
+        Notification.objects.create(recipient=self.creator, message=message)
 
     # Handle Pay It Forward
     def pay_it_forward(self):
@@ -88,23 +115,6 @@ class RandomActOfKindness(models.Model):
         self.status = new_status
         self.save()
 
-def save(self, *args, **kwargs):
-    # Only apply the validation check for new RAKs, not when updating existing ones
-    if self._state.adding:  # This checks if the instance is being created
-        if RandomActOfKindness.objects.filter(
-            creator=self.creator, 
-            description=self.description, 
-            created_at__gte=timezone.now() - timedelta(minutes=10)
-        ).exists():
-            raise ValueError("You have already posted a similar RAK recently.")
-    
-    super().save(*args, **kwargs)
-
-class PayItForward(models.Model):
-    original_rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='original_rak')
-    new_rak = models.ForeignKey(RandomActOfKindness, on_delete=models.CASCADE, related_name='pay_it_forward_rak')
-    bonus_points = models.PositiveIntegerField(default=15)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 class RAKClaim(models.Model):
     rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
@@ -115,43 +125,17 @@ class RAKClaim(models.Model):
     def __str__(self):
         return f"RAK claimed by {self.claimant.username} on {self.claimed_at}"
 
-
-class ClaimAction(models.Model):
-    rak_claim = models.ForeignKey(RAKClaim, on_delete=models.CASCADE, related_name='actions')
-    action_type = models.CharField(max_length=50)
-    description = models.TextField()
-    completed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    def mark_completed(self):
-        if self.completed:
-            raise ValueError("This action is already completed.")
-        self.completed = True
-        self.completed_at = timezone.now()
-        self.save()
-        
-
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)
-    aura_level = models.CharField(max_length=255, default="Beginner")  # Add this field
-    aura_color = models.CharField(max_length=50, default="Blue")  # Add this field
+    aura_level = models.CharField(max_length=255, default="Beginner")
+    aura_color = models.CharField(max_length=50, default="Blue")
 
     def calculate_level(self):
         aura_info = get_aura_level(self.aura_points)
         self.aura_level = aura_info['main_level']
         self.aura_color = aura_info['color']
         self.save()
-
-
-class Badge(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Notification(models.Model):
