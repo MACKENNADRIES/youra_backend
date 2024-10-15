@@ -93,26 +93,23 @@ class RandomActOfKindnessDetail(APIView):
 class RAKClaimList(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        claimed_raks = RAKClaim.objects.all()
-        serializer = RAKClaimSerializer(claimed_raks, many=True)
-        return Response(serializer.data)
-
     def post(self, request):
-        serializer = RAKClaimSerializer(data=request.data)
+        serializer = RAKClaimSerializer(data=request.data, context={'request': request})  # Add context for user
         if serializer.is_valid():
-            rak = serializer.validated_data['rak']
-            # Prevent the owner from claiming their own RAK
-            if rak.creator == request.user:
-                return Response({"error": "You cannot claim your own RAK."}, status=status.HTTP_400_BAD_REQUEST)
-            # Save the claim with the current user as the claimant
-            claimed_rak = serializer.save(claimant=request.user)
-            # Update the RandomActOfKindness status to 'claimed'
-            claimed_rak.rak.status = 'claimed'
-            claimed_rak.rak.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Save the claim using the serializer's create method
+                claimed_rak = serializer.save()
 
+                # Update the RandomActOfKindness status to 'claimed'
+                claimed_rak.rak.status = 'claimed'
+                claimed_rak.rak.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # View for retrieving or updating a specific RAKClaim instance
 class RAKClaimDetail(APIView):
@@ -151,6 +148,7 @@ class UserProfileView(APIView):
             "email": request.user.email,
             "aura_points": user_profile.aura_points,
             "aura_level": user_profile.aura_level,
+            "aura_sub_level": user_profile.aura_sub_level,
             "aura_color": user_profile.aura_color
         }
         return Response(data, status=200)

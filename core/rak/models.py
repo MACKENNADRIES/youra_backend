@@ -75,25 +75,26 @@ class RandomActOfKindness(models.Model):
         self.completed_at = timezone.now()
         previous_level = self.creator.userprofile.aura_level  # Track the previous level
         self.award_aura_points()  # Update aura points and level
-        self.award_badges(previous_level)  # Pass previous level to badge awarding logic
+        self.award_badges(previous_level)  # Pass the previous level to award_badges
         self.send_notification("Your Random Act of Kindness has been completed.")
         self.save()
 
+    # **Ensure this method is inside the model class**
     def award_aura_points(self):
         if self.status == 'completed':
-            user_profile = self.creator.userprofile
-            user_profile.aura_points += self.aura_points  # Award aura points
-            user_profile.calculate_level()
-            user_profile.save()
+            try:
+                # Ensure the creator's user profile exists
+                user_profile = self.creator.userprofile  
+                user_profile.aura_points += self.aura_points  # Award aura points
+                user_profile.calculate_level()  # Update the aura level and color
+                user_profile.save()
+            except UserProfile.DoesNotExist:
+                raise ValueError("User profile for the RAK creator does not exist.")
         else:
             raise ValueError("Aura points can only be awarded once the RAK is completed.")
 
-# Badge awarding logic based on aura level milestones
     def award_badges(self, previous_level):
-        # Get the current aura level after awarding points
         current_level = self.creator.userprofile.aura_level
-
-        # Dictionary to map first occurrences of levels to badges
         badge_mapping = {
             "Generator": "First Generator Badge",
             "Manifesting Generator": "First Manifesting Generator Badge",
@@ -102,17 +103,12 @@ class RandomActOfKindness(models.Model):
             "Reflector": "First Reflector Badge",
         }
 
-        # Check if the user has just reached the first level of a new type
         if previous_level != current_level:
             if current_level in badge_mapping:
-                # Notify the user about the badge
                 self.send_notification(f"Congrats! You've earned the '{badge_mapping[current_level]}' badge.")
 
-
-    # Sending notifications directly
     def send_notification(self, message):
         Notification.objects.create(recipient=self.creator, message=message)
-
 
     def award_pay_it_forward_bonus(self):
         claimant_profile = self.rak_claim.claimant.userprofile
@@ -127,7 +123,6 @@ class RandomActOfKindness(models.Model):
         self.status = new_status
         self.save()
 
-
 class RAKClaim(models.Model):
     rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
     claimant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_claims')
@@ -137,17 +132,23 @@ class RAKClaim(models.Model):
     def __str__(self):
         return f"RAK claimed by {self.claimant.username} on {self.claimed_at}"
 
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)
     aura_level = models.CharField(max_length=255, default="Initiator")
+    aura_sub_level = models.CharField(max_length=255, default="Initiator")  # Add this line
     aura_color = models.CharField(max_length=50, default="light yellow")
 
     def calculate_level(self):
+        # Assuming this method calculates aura level based on aura points
         aura_info = get_aura_level(self.aura_points)
         self.aura_level = aura_info['main_level']
-        self.aura_color = aura_info['light yellow']
+        self.aura_sub_level = aura_info['sub_level']  # Set sub_level here
+        self.aura_color = aura_info.get('color', 'light yellow')
         self.save()
+
+
 
 
 class Notification(models.Model):

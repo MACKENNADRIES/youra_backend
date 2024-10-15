@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed
 from .models import RandomActOfKindness, RAKClaim, Report, PayItForward
+from users.models import CustomUser
+from django.core.exceptions import ObjectDoesNotExist  
 
 
 class RandomActOfKindnessSerializer(serializers.ModelSerializer):
@@ -25,17 +27,26 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
     
 class RAKClaimSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
-    rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
+    rak_id = serializers.IntegerField(write_only=True)  # Allow rak_id in the request body
 
     class Meta:
         model = RAKClaim
-        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
+        fields = ['id', 'rak_id', 'claimant', 'claimed_at', 'details']  # Include rak_id
 
-    def update(self, instance, validated_data):
-        # Update fields in the RAKClaim instance
-        instance.details = validated_data.get('details', instance.details)
-        instance.save()
-        return instance
+    def create(self, validated_data):
+        rak_id = validated_data.pop('rak_id')  # Get the rak_id from the validated data
+        try:
+            rak = RandomActOfKindness.objects.get(id=rak_id)
+        except RandomActOfKindness.DoesNotExist:
+            raise serializers.ValidationError("RAK not found.")
+
+        # Ensure the claimant isn't the owner of the RAK
+        if rak.owner == self.context['request'].user:
+            raise serializers.ValidationError("You cannot claim your own RAK.")
+
+        # Create the claim with the given RAK and claimant
+        return RAKClaim.objects.create(rak=rak, claimant=self.context['request'].user, **validated_data)
+
 
 class RAKClaimListSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
@@ -77,18 +88,17 @@ class CustomAuthTokenSerializer(serializers.Serializer):
         username = attrs.get('username')
         password = attrs.get('password')
 
-        # Check if the username exists in the system
+        # Check if username exists in the database
         try:
-            user_exists = User.objects.get(username=username)
-        except User.DoesNotExist:
+            user = CustomUser.objects.get(username=username)
+        except ObjectDoesNotExist:
             raise AuthenticationFailed("It seems like this account doesn't exist. Please check your username or register for a new account.", code='account_not_found')
 
-        # If the user exists, proceed to authenticate with the password
+        # If the username exists, check if the password is correct
         user = authenticate(request=self.context.get('request'), username=username, password=password)
 
         if not user:
-            # If the user exists but the password is incorrect
-            raise AuthenticationFailed("Whoops! You've given us the incorrect details... To keep working on your aura with YOURA, check your username and password!", code='authentication')
+            raise AuthenticationFailed("Whoops! You've given us the incorrect details... To keep working on your aura with YOURA, check your username and password!", code='incorrect_password')
 
         attrs['user'] = user
         return attrs

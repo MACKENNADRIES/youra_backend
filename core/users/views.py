@@ -21,29 +21,33 @@ class CustomUserList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomUserDetail(APIView):
+    """
+    Retrieve, update, or delete a CustomUser instance.
+    """
+    
     def get_object(self, pk):
         try:
             return CustomUser.objects.get(pk=pk)
         except CustomUser.DoesNotExist:
-            raise Http404
+            raise Http404("User not found")
 
     def get(self, request, pk):
         user = self.get_object(pk)
         serializer = CustomUserSerializer(user)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         user = self.get_object(pk)
-        serializer = CustomUserSerializer(user, data=request.data, partial=True)
+        serializer = CustomUserSerializer(user, data=request.data, partial=True)  # 'partial=True' for partial updates
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)  # Return 200 OK after successful update
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         user = self.get_object(pk)
         user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 class CustomAuthToken(ObtainAuthToken):
