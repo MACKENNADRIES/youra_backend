@@ -235,24 +235,29 @@ class PayItForwardView(APIView):
     def post(self, request, rak_id):
         original_rak = get_object_or_404(RandomActOfKindness, id=rak_id)
 
+        # Ensure that the original RAK is completed before paying it forward
         if original_rak.status != 'completed':
-            return Response({"error": "RAK must be completed before paying it forward."}, status=400)
+            return Response({"error": "RAK must be completed before paying it forward."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Ensure that this RAK has not already been paid forward
         if original_rak.is_paid_forward:
-            return Response({"error": "This RAK has already been paid forward."}, status=400)
+            return Response({"error": "This RAK has already been paid forward."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create a new RAK for the Pay It Forward
         new_rak_data = request.data
         new_rak = RandomActOfKindness.objects.create(
             creator=request.user,
             owner=request.user,
-            title=new_rak_data.get('title', 'Pay It Forward for: ' + original_rak.title),
+            title=new_rak_data.get('title', f"Pay It Forward for: {original_rak.title}"),
             description=new_rak_data.get('description', ''),
             aura_points=new_rak_data.get('aura_points', original_rak.aura_points),
         )
 
-        # Mark original RAK as paid forward and save the PayItForward record
-        original_rak.mark_paid_forward()
+        # Mark original RAK as paid forward
+        original_rak.is_paid_forward = True
+        original_rak.save()
+
+        # Create the Pay It Forward record
         PayItForward.objects.create(
             original_rak=original_rak,
             new_rak=new_rak,
@@ -260,7 +265,8 @@ class PayItForwardView(APIView):
         )
 
         serializer = RandomActOfKindnessSerializer(new_rak)
-        return Response(serializer.data, status=201)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     
 class CustomAuthToken(ObtainAuthToken):
     serializer_class = CustomAuthTokenSerializer

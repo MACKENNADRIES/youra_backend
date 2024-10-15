@@ -42,6 +42,7 @@ class RandomActOfKindness(models.Model):
     post_anonymously = models.BooleanField(default=False)
     allow_collaborators = models.BooleanField(default=False)  # Track if collaborators are allowed
     collaborators = models.ManyToManyField(User, blank=True, related_name='collaborative_raks')
+    aura_points_awarded = models.BooleanField(default=False)  # Track if aura points have been awarded
 
     def enable_collaborators(self):
         self.allow_collaborators = True
@@ -81,13 +82,22 @@ class RandomActOfKindness(models.Model):
 
     # **Ensure this method is inside the model class**
     def award_aura_points(self):
-        if self.status == 'completed':
+        # Ensure aura points are awarded only once per RAK completion
+        if self.status == 'completed' and not self.is_paid_forward:
             try:
-                # Ensure the creator's user profile exists
-                user_profile = self.creator.userprofile  
-                user_profile.aura_points += self.aura_points  # Award aura points
-                user_profile.calculate_level()  # Update the aura level and color
-                user_profile.save()
+                user_profile = self.creator.userprofile
+
+                # Ensure aura points have not already been awarded for this RAK
+                if not hasattr(self, 'aura_points_awarded') or not self.aura_points_awarded:
+                    user_profile.aura_points += self.aura_points  # Award aura points
+                    user_profile.calculate_level()  # Update the aura level and color
+                    user_profile.save()
+
+                    # Mark that aura points have been awarded
+                    self.aura_points_awarded = True
+                    self.save()
+                else:
+                    print("Aura points have already been awarded for this RAK.")
             except UserProfile.DoesNotExist:
                 raise ValueError("User profile for the RAK creator does not exist.")
         else:
