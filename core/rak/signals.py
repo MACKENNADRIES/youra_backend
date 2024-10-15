@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
-from .models import RandomActOfKindness, UserProfile, Badge, Notification
+from .models import RandomActOfKindness, UserProfile, Notification
 
 # Get the correct User model
 User = get_user_model()
@@ -15,39 +15,11 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
         user_profile.calculate_level()  # Update aura level
         user_profile.save()
 
-        # Award badges based on completed Random Acts of Kindness milestones
-        completed_raks = RandomActOfKindness.objects.filter(creator=instance.creator, completed_at__isnull=False).count()
-        if completed_raks >= 1:
-            badge, _ = Badge.objects.get_or_create(
-                name="First RAK Completed", 
-                defaults={'description': "Awarded for completing your first Random Act of Kindness!"}
-            )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 10:
-            badge, _ = Badge.objects.get_or_create(
-                name="10 RAKs Completed", 
-                defaults={'description': "Awarded for completing 10 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 50:
-            badge, _ = Badge.objects.get_or_create(
-                name="50 RAKs Completed", 
-                defaults={'description': "Awarded for completing 50 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 100:
-            badge, _ = Badge.objects.get_or_create(
-                name="100 RAKs Completed", 
-                defaults={'description': "Awarded for completing 100 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
+        # Award badges based on completed Random Acts of Kindness milestones (inside model)
+        instance.award_badges()  # Call the badge awarding logic directly in the model
+        
     # Handle Pay It Forward logic
     if instance.is_paid_forward:
-        # Ensure the RAK has been claimed
         if hasattr(instance, 'rak_claim'):
             claimant_profile = instance.rak_claim.claimant.userprofile
             bonus_points = 15  # Define bonus points for Pay It Forward
