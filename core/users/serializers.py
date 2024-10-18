@@ -24,9 +24,47 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return instance
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+
     class Meta:
         model = UserProfile
-        fields = ['aura_points', 'aura_level', 'aura_sub_level', 'aura_color']
+        fields = ['username', 'email', 'first_name', 'last_name', 'aura_points', 'aura_level', 'aura_sub_level', 'aura_color']
+
+class CustomAuthTokenSerializer(serializers.Serializer):
+    username = serializers.CharField(label="Username")
+    password = serializers.CharField(label="Password", style={'input_type': 'password'}, trim_whitespace=False)
+
+    def validate(self, attrs):
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.contrib.auth import authenticate
+        from rest_framework.exceptions import AuthenticationFailed
+        from users.models import CustomUser
+
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        try:
+            user = CustomUser.objects.get(username=username)
+        except ObjectDoesNotExist:
+            raise AuthenticationFailed(
+                "It seems like this account doesn't exist. Please check your username or register for a new account.",
+                code='account_not_found'
+            )
+
+        user = authenticate(request=self.context.get('request'), username=username, password=password)
+
+        if not user:
+            raise AuthenticationFailed(
+                "Whoops! You've given us the incorrect details... To keep working on your aura with YOURA, check your username and password!",
+                code='incorrect_password'
+            )
+
+        attrs['user'] = user
+        return attrs
+
 
 class FollowSerializer(serializers.ModelSerializer):
     follower = serializers.ReadOnlyField(source='follower.username')

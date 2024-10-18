@@ -1,16 +1,15 @@
 # rak/serializers.py
 
 from rest_framework import serializers
-from .models import RandomActOfKindness, RAKClaim, PayItForward
-from users.models import CustomUser
-from users.serializers import UserProfileSerializer
+from .models import RandomActOfKindness, RAKClaim, PayItForward 
 
 class RandomActOfKindnessSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.id')
+    rak_claim = serializers.SerializerMethodField()
 
     class Meta:
         model = RandomActOfKindness
-        fields = ['id', 'title', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'completed_at']
+        fields = ['id', 'title', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'completed_at', 'rak_claim']
 
     def update(self, instance, validated_data):
         instance.title = validated_data.get('title', instance.title)
@@ -24,6 +23,13 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    # Define the method to return the claim
+    def get_rak_claim(self, obj):
+        claim = RAKClaim.objects.filter(rak=obj).first()  # Get the claim for this RAK
+        if claim:
+            return RAKClaimDetailSerializer(claim).data  # Use detail serializer for claim info
+        return None
+
 class RAKClaimSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')
 
@@ -32,7 +38,14 @@ class RAKClaimSerializer(serializers.ModelSerializer):
         fields = ['id', 'rak', 'claimant', 'claimed_at', 'details', 'claim_anonymously']
 
     def create(self, validated_data):
-        return RAKClaim.objects.create(**validated_data)
+        rak = validated_data.get('rak')  # This will already be a RandomActOfKindness instance
+        
+        # Create the claim and set it on the RAK
+        claim = RAKClaim.objects.create(**validated_data)
+        rak.rak_claim = claim  # Ensure the RAK has the claim linked
+        rak.save()  # Save the RAK with the linked claim
+
+        return claim
 
     def get_claimant(self, obj):
         if obj.claim_anonymously:
@@ -61,34 +74,3 @@ class PayItForwardSerializer(serializers.ModelSerializer):
         model = PayItForward
         fields = ['original_rak', 'new_rak', 'pay_it_forward_by', 'created_at']
 
-class CustomAuthTokenSerializer(serializers.Serializer):
-    username = serializers.CharField(label="Username")
-    password = serializers.CharField(label="Password", style={'input_type': 'password'}, trim_whitespace=False)
-
-    def validate(self, attrs):
-        from django.core.exceptions import ObjectDoesNotExist
-        from django.contrib.auth import authenticate
-        from rest_framework.exceptions import AuthenticationFailed
-        from users.models import CustomUser
-
-        username = attrs.get('username')
-        password = attrs.get('password')
-
-        try:
-            user = CustomUser.objects.get(username=username)
-        except ObjectDoesNotExist:
-            raise AuthenticationFailed(
-                "It seems like this account doesn't exist. Please check your username or register for a new account.",
-                code='account_not_found'
-            )
-
-        user = authenticate(request=self.context.get('request'), username=username, password=password)
-
-        if not user:
-            raise AuthenticationFailed(
-                "Whoops! You've given us the incorrect details... To keep working on your aura with YOURA, check your username and password!",
-                code='incorrect_password'
-            )
-
-        attrs['user'] = user
-        return attrs

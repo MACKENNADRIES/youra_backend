@@ -2,9 +2,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, Http404
 from .models import RandomActOfKindness, RAKClaim, PayItForward
-from .serializers import RandomActOfKindnessSerializer, RAKClaimSerializer  # Remove PayItForwardSerializer
+from .serializers import RandomActOfKindnessSerializer, RAKClaimSerializer, PayItForwardSerializer  # Remove PayItForwardSerializer
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from .permissions import IsOwnerOrClaimant
 
@@ -90,19 +90,23 @@ class RAKClaimList(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = RAKClaimSerializer(data=request.data, context={'request': request})
+        # Include context to pass the request object to the serializer
+        serializer = RAKClaimSerializer(data=request.data, context={'request': request})  
+
         if serializer.is_valid():
             try:
-                rak = serializer.validated_data['rak']
-                if rak.owner == request.user:
-                    return Response({"error": "You cannot claim your own RAK."}, status=status.HTTP_400_BAD_REQUEST)
+                # Save the claim with the current user as the claimant
                 claimed_rak = serializer.save(claimant=request.user)
-                # Update the RAK status to 'claimed'
-                rak.status = 'claimed'
-                rak.save()
+
+                # Automatically set the RandomActOfKindness status to 'in_progress'
+                claimed_rak.rak.status = 'in_progress'
+                claimed_rak.rak.save()
+
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RAKClaimDetail(APIView):
@@ -156,9 +160,11 @@ class PayItForwardView(APIView):
     def post(self, request, rak_id):
         original_rak = get_object_or_404(RandomActOfKindness, id=rak_id)
 
+        # Ensure that the original RAK is completed before paying it forward
         if original_rak.status != 'completed':
             return Response({"error": "RAK must be completed before paying it forward."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Ensure that this RAK has not already been paid forward
         if original_rak.is_paid_forward:
             return Response({"error": "This RAK has already been paid forward."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -170,9 +176,7 @@ class PayItForwardView(APIView):
             title=new_rak_data.get('title', f"Pay It Forward for: {original_rak.title}"),
             description=new_rak_data.get('description', ''),
             aura_points=new_rak_data.get('aura_points', original_rak.aura_points),
-            status='open',
-            visibility=original_rak.visibility,
-            post_type=original_rak.post_type,
+            post_type='offer',  # Automatically set post_type to 'offer' for Pay It Forward
         )
 
         # Mark original RAK as paid forward
@@ -186,5 +190,52 @@ class PayItForwardView(APIView):
             pay_it_forward_by=request.user,
         )
 
+        # Award aura points to the original requester (the owner of the original RAK)
+        if original_rak.post_type == 'request':
+            user_profile = original_rak.owner.userprofile
+            aura_points_for_requester = original_rak.aura_points  # Award full points to the requester
+            user_profile.aura_points += aura_points_for_requester
+            user_profile.calculate_level()
+            user_profile.save()
+
         serializer = RandomActOfKindnessSerializer(new_rak)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+    
+# List all PayItForward instances or create a new one
+class PayItForwardListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pay_it_forward_instances = PayItForward.objects.all()
+        serializer = PayItForwardSerializer(pay_it_forward_instances, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = PayItForwardSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(pay_it_forward_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# Retrieve, update, or delete a specific PayItForward instance
+class PayItForwardDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        pay_it_forward_instance = get_object_or_404(PayItForward, pk=pk)
+        serializer = PayItForwardSerializer(pay_it_forward_instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        pay_it_forward_instance = get_object_or_404(PayItForward, pk=pk)
+        serializer = PayItForwardSerializer(pay_it_forward_instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        pay_it_forward_instance = get_object_or_404(PayItForward, pk=pk)
+        pay_it_forward_instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

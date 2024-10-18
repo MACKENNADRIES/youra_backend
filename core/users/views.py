@@ -3,15 +3,18 @@
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from users.models import UserProfile, CustomUser
-from users.serializers import CustomUserSerializer, UserProfileSerializer, FollowSerializer
+from users.serializers import CustomUserSerializer, UserProfileSerializer, FollowSerializer, CustomAuthTokenSerializer
+
 
 
 
 class CustomAuthToken(ObtainAuthToken):
+    serializer_class = CustomAuthTokenSerializer
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -20,10 +23,11 @@ class CustomAuthToken(ObtainAuthToken):
         return Response({
             'token': token.key,
             'user_id': user.pk,
-            'username': user.username,
+            'username': user.username
         })
-    
 class CustomUserList(APIView):
+    permission_classes = [AllowAny] 
+
     def get(self, request):
         users = CustomUser.objects.all()
         serializer = CustomUserSerializer(users, many=True)
@@ -73,6 +77,18 @@ class UserProfileView(APIView):
             user_profile = UserProfile.objects.get(user=request.user)
         except UserProfile.DoesNotExist:
             return Response({"error": "UserProfile does not exist."}, status=404)
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data, status=200)
+    
+class UserProfileDetailView(APIView):
+    permission_classes = [IsAuthenticated]  # Make sure the request is authenticated
+
+    def get(self, request, user_id):
+        try:
+            user_profile = UserProfile.objects.get(user_id=user_id)  # Fetch profile by user_id
+        except UserProfile.DoesNotExist:
+            return Response({"error": "UserProfile does not exist."}, status=404)
+        
         serializer = UserProfileSerializer(user_profile)
         return Response(serializer.data, status=200)
 

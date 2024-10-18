@@ -66,9 +66,18 @@ class RandomActOfKindness(models.Model):
     def complete_rak(self):
         if self.status == 'completed':
             return
+
         self.status = 'completed'
         self.completed_at = timezone.now()
         self.save()
+
+        # Award aura points to the claimant if the RAK was claimed
+        if hasattr(self, 'rak_claim'):
+            claimant_profile = self.rak_claim.claimant.userprofile
+            aura_points_for_claimant = self.aura_points 
+            claimant_profile.aura_points += aura_points_for_claimant
+            claimant_profile.calculate_level()  # Update aura level if necessary
+            claimant_profile.save()
 
     def send_notification(self, message):
         Notification.objects.create(recipient=self.creator, message=message)

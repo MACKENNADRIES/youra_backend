@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CustomUserList, CustomUserDetail, FollowingListView, UserProfileView, FollowUserView, FollowersListView, UnfollowUserView, LeaderboardView, CustomAuthToken
+from .views import CustomUserList, CustomUserDetail, FollowingListView, UserProfileView, FollowUserView, FollowersListView, UnfollowUserView, LeaderboardView, CustomAuthToken, UserProfileDetailView
 
 urlpatterns = [
     # User-related endpoints
@@ -8,6 +8,7 @@ urlpatterns = [
 
     # User profile view
     path('profile/', UserProfileView.as_view(), name='user-profile'),  # View and update logged-in user's profile
+    path('profile/<int:user_id>/', UserProfileDetailView.as_view(), name='user-profile-detail'),
 
     # Leaderboard
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),  # Display top users by aura points
