@@ -1,12 +1,28 @@
+# users/views.py
+
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from .models import CustomUser
-from .serializers import CustomUserSerializer
+from users.models import UserProfile, CustomUser
+from users.serializers import CustomUserSerializer, UserProfileSerializer, FollowSerializer
 
+
+
+class CustomAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'username': user.username,
+        })
+    
 class CustomUserList(APIView):
     def get(self, request):
         users = CustomUser.objects.all()
@@ -17,8 +33,8 @@ class CustomUserList(APIView):
         serializer = CustomUserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 class CustomUserDetail(APIView):
     """
@@ -34,34 +50,80 @@ class CustomUserDetail(APIView):
     def get(self, request, pk):
         user = self.get_object(pk)
         serializer = CustomUserSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=200)
 
     def put(self, request, pk):
         user = self.get_object(pk)
-        serializer = CustomUserSerializer(user, data=request.data, partial=True)  # 'partial=True' for partial updates
+        serializer = CustomUserSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)  # Return 200 OK after successful update
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
         user = self.get_object(pk)
         user.delete()
-        return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "User deleted successfully"}, status=204)
 
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
 
-class CustomAuthToken(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data,
-            context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
+    def get(self, request):
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            return Response({"error": "UserProfile does not exist."}, status=404)
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data, status=200)
 
-        return Response({
-            'token': token.key,
-            'user_id': user.id,
-            'email': user.email
-        })
+class LeaderboardView(APIView):
+    def get(self, request):
+        top_users = UserProfile.objects.order_by('-aura_points')[:10]
+        data = [{
+            'username': user.user.username,
+            'aura_points': user.aura_points,
+            'aura_level': user.aura_level,
+            'aura_sub_level': user.aura_sub_level,
+        } for user in top_users]
+        return Response(data, status=200)
+    
+
+class FollowUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        followed_user = CustomUser.objects.get(id=user_id)
+        follow, created = Follow.objects.get_or_create(follower=request.user, followed=followed_user)
+        if not created:
+            return Response({"message": "You are already following this user."}, status=400)
+        return Response({"message": "You are now following this user."}, status=201)
+
+class UnfollowUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        followed_user = CustomUser.objects.get(id=user_id)
+        try:
+            follow = Follow.objects.get(follower=request.user, followed=followed_user)
+            follow.delete()
+            return Response({"message": "You have unfollowed this user."}, status=204)
+        except Follow.DoesNotExist:
+            return Response({"error": "You are not following this user."}, status=400)
+
+class FollowersListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = CustomUser.objects.get(id=user_id)
+        followers = user.followers.all()  # All users following this user
+        serializer = FollowSerializer(followers, many=True)
+        return Response(serializer.data)
+
+class FollowingListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = CustomUser.objects.get(id=user_id)
+        following = user.following.all()  # All users this user is following
+        serializer = FollowSerializer(following, many=True)
+        return Response(serializer.data)

@@ -1,10 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
 from django.contrib.auth import get_user_model
-from .utils import get_aura_level
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 User = get_user_model()
 
@@ -40,9 +36,9 @@ class RandomActOfKindness(models.Model):
     completed_at = models.DateTimeField(null=True)
     is_paid_forward = models.BooleanField(default=False)
     post_anonymously = models.BooleanField(default=False)
-    allow_collaborators = models.BooleanField(default=False)  # Track if collaborators are allowed
+    allow_collaborators = models.BooleanField(default=False)
     collaborators = models.ManyToManyField(User, blank=True, related_name='collaborative_raks')
-    aura_points_awarded = models.BooleanField(default=False)  # Track if aura points have been awarded
+    aura_points_awarded = models.BooleanField(default=False)
 
     def enable_collaborators(self):
         self.allow_collaborators = True
@@ -55,12 +51,10 @@ class RandomActOfKindness(models.Model):
         else:
             raise ValueError("Collaboration not allowed or user is already a collaborator.")
 
-    # Method to handle claiming of RAK
     def claim_rak(self, user):
         if self.status != 'open':
             raise ValueError("This RAK cannot be claimed because it has already been claimed or completed.")
         
-        # Prevent the owner from claiming their own RAK
         if self.creator == user:
             raise ValueError("You cannot claim your own RAK.")
         
@@ -74,92 +68,20 @@ class RandomActOfKindness(models.Model):
             return
         self.status = 'completed'
         self.completed_at = timezone.now()
-        previous_level = self.creator.userprofile.aura_level  # Track the previous level
-        self.award_aura_points()  # Update aura points and level
-        self.award_badges(previous_level)  # Pass the previous level to award_badges
-        self.send_notification("Your Random Act of Kindness has been completed.")
         self.save()
-
-    # **Ensure this method is inside the model class**
-    def award_aura_points(self):
-        # Ensure aura points are awarded only once per RAK completion
-        if self.status == 'completed' and not self.is_paid_forward:
-            try:
-                user_profile = self.creator.userprofile
-
-                # Ensure aura points have not already been awarded for this RAK
-                if not hasattr(self, 'aura_points_awarded') or not self.aura_points_awarded:
-                    user_profile.aura_points += self.aura_points  # Award aura points
-                    user_profile.calculate_level()  # Update the aura level and color
-                    user_profile.save()
-
-                    # Mark that aura points have been awarded
-                    self.aura_points_awarded = True
-                    self.save()
-                else:
-                    print("Aura points have already been awarded for this RAK.")
-            except UserProfile.DoesNotExist:
-                raise ValueError("User profile for the RAK creator does not exist.")
-        else:
-            raise ValueError("Aura points can only be awarded once the RAK is completed.")
-
-    def award_badges(self, previous_level):
-        current_level = self.creator.userprofile.aura_level
-        badge_mapping = {
-            "Generator": "First Generator Badge",
-            "Manifesting Generator": "First Manifesting Generator Badge",
-            "Projector": "First Projector Badge",
-            "Manifestor": "First Manifestor Badge",
-            "Reflector": "First Reflector Badge",
-        }
-
-        if previous_level != current_level:
-            if current_level in badge_mapping:
-                self.send_notification(f"Congrats! You've earned the '{badge_mapping[current_level]}' badge.")
 
     def send_notification(self, message):
         Notification.objects.create(recipient=self.creator, message=message)
-
-    def award_pay_it_forward_bonus(self):
-        claimant_profile = self.rak_claim.claimant.userprofile
-        bonus_points = 15
-        claimant_profile.aura_points += bonus_points
-        claimant_profile.calculate_level()
-        claimant_profile.save()
-
-    def update_status(self, new_status):
-        if self.status == 'completed':
-            raise ValueError("Cannot update a completed RAK.")
-        self.status = new_status
-        self.save()
 
 class RAKClaim(models.Model):
     rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
     claimant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_claims')
     claimed_at = models.DateTimeField(auto_now_add=True)
     details = models.TextField(blank=True, null=True)
+    claim_anonymously = models.BooleanField(default=False)
 
     def __str__(self):
         return f"RAK claimed by {self.claimant.username} on {self.claimed_at}"
-
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    aura_points = models.PositiveIntegerField(default=0)
-    aura_level = models.CharField(max_length=255, default="Initiator")
-    aura_sub_level = models.CharField(max_length=255, default="Initiator")  # Add this line
-    aura_color = models.CharField(max_length=50, default="light yellow")
-
-    def calculate_level(self):
-        # Assuming this method calculates aura level based on aura points
-        aura_info = get_aura_level(self.aura_points)
-        self.aura_level = aura_info['main_level']
-        self.aura_sub_level = aura_info['sub_level']  # Set sub_level here
-        self.aura_color = aura_info.get('color', 'light yellow')
-        self.save()
-
-
-
 
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
@@ -169,31 +91,6 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.recipient.username} - {self.message}"
-
-
-class Report(models.Model):
-    REPORT_TYPES = [
-        ('inappropriate_rak', 'Inappropriate RAK'),
-        ('inappropriate_comment', 'Inappropriate Comment'),
-        ('unfulfilled_rak', 'Unfulfilled RAK'),
-        ('user_block', 'User Block'),
-    ]
-
-    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_made')
-    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_against')
-    report_type = models.CharField(max_length=30, choices=REPORT_TYPES)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Report by {self.reporter} on {self.reported_user} for {self.report_type}"
-
-
-class Block(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blocks_made')
-    blocked_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blocked_by')
-    created_at = models.DateTimeField(auto_now_add=True)
-
 
 class PayItForward(models.Model):
     original_rak = models.ForeignKey(RandomActOfKindness, on_delete=models.CASCADE, related_name='pay_it_forwards')

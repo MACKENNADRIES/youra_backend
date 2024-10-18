@@ -1,13 +1,12 @@
+# rak/permissions.py
+
 from rest_framework import permissions
 
 class IsOwnerOrClaimant(permissions.BasePermission):
     """
-    Custom permission to allow the owner or claimant to modify RAKs.
+    Custom permission to only allow owners of an object or claimants to access it.
     """
-    def has_object_permission(self, request, view, obj):
-        # SAFE_METHODS (GET, HEAD, OPTIONS) allow read-only access to all users
-        if request.method in permissions.SAFE_METHODS:
-            return True
 
-        # Allow write access if the user is the owner or the claimant (if applicable)
-        return obj.owner == request.user or getattr(obj, 'rak_claim', None) and obj.rak_claim.claimant == request.user
+    def has_object_permission(self, request, view, obj):
+        # Permissions are only allowed to the owner or claimant of the RAK
+        return obj.creator == request.user or obj.claimant == request.user

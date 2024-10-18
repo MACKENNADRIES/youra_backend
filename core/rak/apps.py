@@ -1,3 +1,5 @@
+# rak/apps.py
+
 from django.apps import AppConfig
 
 class RakConfig(AppConfig):

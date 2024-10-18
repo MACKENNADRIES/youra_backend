@@ -1,66 +1,49 @@
+# rak/signals.py
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
-from .models import RandomActOfKindness, UserProfile, Notification
+from .models import RandomActOfKindness, Notification
+from users.models import UserProfile
 
-# Get the correct User model
 User = get_user_model()
 
 @receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
-    # Handle aura points for the creator when RandomActOfKindness is completed
-    if instance.completed_at and not instance.is_paid_forward:
-        user_profile = instance.creator.userprofile
-        previous_level = user_profile.aura_level  # Get the previous aura level
-        user_profile.aura_points += instance.aura_points  # Add aura points to the creator
-        user_profile.calculate_level()  # Update aura level
-        user_profile.save()
+    if instance.status == 'completed' and not instance.is_paid_forward and not instance.aura_points_awarded:
+        try:
+            user_profile = instance.creator.userprofile
+            previous_level = user_profile.aura_level
+            user_profile.award_aura_points(instance.aura_points)
+            user_profile.award_badges(previous_level)
 
-        # Award badges based on completed Random Acts of Kindness milestones
-        instance.award_badges(previous_level)
+            # Mark aura points as awarded
+            instance.aura_points_awarded = True
+            instance.save()
+
+            # Send notification
+            Notification.objects.create(
+                recipient=instance.creator,
+                message="Your Random Act of Kindness has been completed and aura points awarded."
+            )
+        except UserProfile.DoesNotExist:
+            raise ValueError("User profile for the RAK creator does not exist.")
 
     # Handle Pay It Forward logic for the claimant
     if instance.is_paid_forward:
         if hasattr(instance, 'rak_claim'):
             claimant_profile = instance.rak_claim.claimant.userprofile
             bonus_points = 15  # Define bonus points for Pay It Forward
-            claimant_profile.aura_points += bonus_points
-            claimant_profile.calculate_level()
-            claimant_profile.save()
-
-    # NEW: Update aura points for the claimant when RAK is completed
-    if instance.status == 'completed' and hasattr(instance, 'rak_claim'):
-        claimant_profile = instance.rak_claim.claimant.userprofile
-        aura_points_for_claimant = instance.aura_points // 2  # Give half of the aura points to the claimant
-        claimant_profile.aura_points += aura_points_for_claimant
-        claimant_profile.calculate_level()
-        claimant_profile.save()
-
-    # Send notifications
-    if instance.status == 'claimed':
-        message = f"Your Random Act of Kindness has been claimed by {instance.rak_claim.claimant.username}."
-        Notification.objects.create(recipient=instance.creator, message=message)
-
-    if instance.completed_at:
-        message = f"Your Random Act of Kindness has been completed."
-        Notification.objects.create(recipient=instance.creator, message=message)
-
-    # Send notifications
-    if instance.status == 'claimed':
-        message = f"Your Random Act of Kindness has been claimed by {instance.rak_claim.claimant.username}."
-        Notification.objects.create(recipient=instance.creator, message=message)
-
-    if instance.completed_at:
-        message = f"Your Random Act of Kindness has been completed."
-        Notification.objects.create(recipient=instance.creator, message=message)
-
+            claimant_profile.award_aura_points(bonus_points)
+            # Optionally, award badges if level changes
+            claimant_profile.award_badges(claimant_profile.aura_level)
 
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
     else:
-        instance.userprofile.save()
-
-def send_notification(user, message):
-    Notification.objects.create(recipient=user, message=message)
+        try:
+            instance.userprofile.save()
+        except UserProfile.DoesNotExist:
+            UserProfile.objects.create(user=instance)

@@ -1,3 +1,5 @@
+# users/utils.py
+
 def get_aura_level(points):
     aura_levels = [
         # Generator (The Masterful Creator)
@@ -31,7 +33,6 @@ def get_aura_level(points):
         (range(1900, 2000), "Reflector", "Harmonizer", "Crystal White")
     ]
 
-    # Iterate through the levels and check if the user's points fall within a range
     for point_range, main_level, sub_level, color in aura_levels:
         if points in point_range:
             return {
@@ -49,4 +50,8 @@ def get_aura_level(points):
         }
 
     # Default return in case points do not fall into any range
-    return None
+    return {
+        "main_level": "Initiator",
+        "sub_level": "Initiator",
+        "color": "Light Yellow"
+    }

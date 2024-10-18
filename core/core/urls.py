@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from users.views import CustomAuthToken
+from users.views import CustomAuthToken  # Import your token authentication view
 
 urlpatterns = [
     # Admin URL
