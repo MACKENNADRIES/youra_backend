@@ -45,6 +45,25 @@ The app fosters a supportive environment where users can track their impact, con
 - **Explore Page**
   -Shows random RAKs that you might be interested in (potentially based off ones you have interacted with/similar aura level)
 
+### To Do
+  - each claim has a column that is either true or false - getting details without the username
+  - ammount ? price ? 
+  - when deleting - set user to inactive rather than deleting - field is active - True 
+  - logic for delete (images can be deleted not users ?)
+  - deploy before saturday
+  - storing points as queries 
+  - how points were acquired? - do i want to include this --- YES --- points associated with categories, you have earnt this doing raks, your have earnt this from paying it forward --- DONE 
+  - maybe this is more for the front end but it could be like data pop ups on the profile (how points are acquired --- algorithm to calculate percantages???)
+  - points should proabably be in the user table as they have a one to one relationship with the user - this will be chatoic to fix --- DONE!!!!
+  - a table with aura_pointsz_type - offer, pay it forward, do users get points for requesting (maybe a very small ammount)
+  - point logic - points only awarded when action is complete - ie rak or pif -- DONE 
+  - leaderboard - enumerating over the list of users - example on stack overflow 
+  - test leaderboard -- DONE 
+  - fix comments clean up code !!!!!
+  - implement my own custom error pages (link on slack)
+  - show a collaboration on insomnia 
+  - anonymous!!!!! MAKE SURE THIS WORKS 
+  - update user detail!!!! - change username password etc 
 
 ### Design Ideas
 - **The Look and Feel**
@@ -142,11 +161,6 @@ The app fosters a supportive environment where users can track their impact, con
 - Only owner can delete pledge
 - Owner and Claimant can update the status - or should this be an event listener? 
 
-### Resolution Centre:
-- Uswers can report RAK's that were claimed and then unfulfilled 
-- Users can report inappropriate Raks/comments
-- Users can block other users
-- Users can report other users 
 ### RAK Status Transitions:
 - Proper flow of statuses from open to claimed, then to completed.
 
@@ -165,6 +179,12 @@ The app fosters a supportive environment where users can track their impact, con
 - Ability to follow other users and see their RAKs in a feed.
 - Like and comment functionality on RAK posts.
 - Ability to unfollow other users 
+
+### Resolution Centre:
+- Uswers can report RAK's that were claimed and then unfulfilled 
+- Users can report inappropriate Raks/comments
+- Users can block other users
+- Users can report other users 
 
 ### Leaderboard:
 - Global or local leaderboard showing top contributors based on aura points or completed RAKs.
@@ -231,15 +251,15 @@ Your crowdfunding project must:
   - [x] Owner (a user)
   - [x] Description
   - [x] Image
-  - [ ] Target amount to fundraise
+  - [x] Goal - either offering a random act of kindness or requesting one
   - [x] Whether it is currently open to accepting new supporters or not
   - [x] When the project was created
-- [ ] Ability to “pledge” to a project. A pledge should include at least the following attributes:
-  - [ ] An amount
-  - [ ] The project the pledge is for
+- [ ] Ability to "claim" to a random act of kindness offer or request. A claim should include at least the following attributes:
+  - [x] An amount, or action
+  - [x] The rak_id the claim is for
   - [x] The supporter/user (i.e. who created the pledge)
-  - [ ] Whether the pledge is anonymous or not
-  - [ ] A comment to go along with the pledge
+  - [ ] Whether the claim is anonymous or not
+  - [x] A comment to go along with the claim
 - [ ] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
 - [ ] Implement suitable permissions, e.g. who is allowed to delete a pledge?
 - [ ] Return the relevant status codes for both successful and unsuccessful requests to the API.
