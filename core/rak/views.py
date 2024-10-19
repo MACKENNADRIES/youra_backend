@@ -55,9 +55,19 @@ class RandomActOfKindnessDetail(APIView):
                 'status': rak_post.status,
             }
         return Response(rak_data)
-
+    
     def put(self, request, pk):
         rak_post = self.get_object(pk)
+        
+        # Check if the request is for updating the post details (title, description, media)
+        if 'title' in request.data or 'description' in request.data or 'media' in request.data:
+            serializer = RandomActOfKindnessSerializer(rak_post, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle status update logic
         status_update = request.data.get("status")
 
         if status_update == 'claimed':
@@ -81,10 +91,11 @@ class RandomActOfKindnessDetail(APIView):
         serializer = RandomActOfKindnessSerializer(rak_post)
         return Response(serializer.data)
 
+
     def delete(self, request, pk):
-        rak_post = self.get_object(pk)
-        rak_post.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            rak_post = self.get_object(pk)
+            rak_post.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 class RAKClaimList(APIView):
     permission_classes = [IsAuthenticated]
@@ -202,6 +213,7 @@ class PayItForwardView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+
     
 # List all PayItForward instances or create a new one
 class PayItForwardListCreateView(APIView):
@@ -239,3 +251,38 @@ class PayItForwardDetailView(APIView):
         pay_it_forward_instance = get_object_or_404(PayItForward, pk=pk)
         pay_it_forward_instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+# views.py
+class UpdateRAKPostView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrClaimant]  # Ensure proper permissions
+
+    def put(self, request, pk):
+        # Get the RAK post by ID
+        rak_post = get_object_or_404(RandomActOfKindness, pk=pk)
+
+        # Ensure only the owner can edit the RAK post
+        if rak_post.owner != request.user:
+            return Response({"error": "You don't have permission to edit this RAK."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Update only allowed fields
+        data = request.data
+        rak_post.title = data.get("title", rak_post.title)
+        rak_post.description = data.get("description", rak_post.description)
+        rak_post.visibility = data.get("visibility", rak_post.visibility)
+        rak_post.post_type = data.get("post_type", rak_post.post_type)
+
+        # Handle image removal if requested
+        if data.get("remove_image", False):
+            rak_post.media.delete(save=False)  # Delete the image from storage
+            rak_post.media = None  # Set the media field to null
+
+        # Handle new image upload if provided
+        if 'media' in request.FILES:
+            rak_post.media = request.FILES['media']  # Save the new image
+
+        # Save the changes
+        rak_post.save()
+
+        # Return the updated post data
+        serializer = RandomActOfKindnessSerializer(rak_post)
+        return Response(serializer.data, status=status.HTTP_200_OK)

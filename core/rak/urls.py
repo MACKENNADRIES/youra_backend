@@ -21,4 +21,5 @@ urlpatterns = [
     # Collaboration functionality
     path('rakposts/<int:rak_id>/enable_collaboration/', EnableCollaborationView.as_view(), name='enable-collaboration'),  # Enable collaboration on RAK
     path('rakposts/<int:rak_id>/join/', JoinRAKView.as_view(), name='join-rak'),  # Join RAK as collaborator
+    path('rakposts/<int:pk>/', RandomActOfKindnessDetail.as_view(), name='rakpost-detail'),
 ]

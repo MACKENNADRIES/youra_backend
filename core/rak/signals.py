@@ -15,17 +15,17 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
         # Case 1: RAK is an offer, award points to the creator
         if instance.post_type == 'offer':
             user_profile = instance.creator.userprofile
-            previous_level = user_profile.aura_level
             user_profile.aura_points += instance.aura_points  # Add aura points to the creator
+            user_profile.points_from_offers += instance.aura_points  # Track points from offers
             user_profile.calculate_level()
             user_profile.save()
-            instance.award_badges(previous_level)  # Award badges for completed RAKs
 
         # Case 2: RAK is a request, no points for the owner, claimant gets points
         elif instance.post_type == 'request' and instance.status == 'completed' and hasattr(instance, 'rak_claim'):
             claimant_profile = instance.rak_claim.claimant.userprofile
             aura_points_for_claimant = instance.aura_points
             claimant_profile.aura_points += aura_points_for_claimant  # Give full points to the claimant
+            claimant_profile.points_from_claiming += aura_points_for_claimant  # Track points from claiming
             claimant_profile.calculate_level()
             claimant_profile.save()
 
@@ -34,6 +34,7 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
         original_rak_owner_profile = instance.creator.userprofile
         aura_points_for_owner = instance.aura_points  # The original requester now gets the points
         original_rak_owner_profile.aura_points += aura_points_for_owner
+        original_rak_owner_profile.points_from_pay_it_forward += aura_points_for_owner  # Track points from Pay It Forward
         original_rak_owner_profile.calculate_level()
         original_rak_owner_profile.save()
 

@@ -1,5 +1,3 @@
-# users/serializers.py
-
 from rest_framework import serializers
 from .models import CustomUser, UserProfile, Follow, Report
 
@@ -24,14 +22,44 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return instance
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
-    first_name = serializers.CharField(source='user.first_name', read_only=True)
-    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user = CustomUserSerializer(read_only=True)  #NESTING!!!!!!!!!!!!!!!
+    points_from_claiming_percentage = serializers.SerializerMethodField()
+    points_from_pay_it_forward_percentage = serializers.SerializerMethodField()
+    points_from_offers_percentage = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'email', 'first_name', 'last_name', 'aura_points', 'aura_level', 'aura_sub_level', 'aura_color']
+        fields = [
+            'user',  # This now includes id, username, email, first_name, last_name from CustomUser
+            'aura_points', 
+            'aura_level', 
+            'aura_sub_level', 
+            'aura_color',
+            'points_from_claiming', 
+            'points_from_pay_it_forward', 
+            'points_from_offers',
+            'points_from_claiming_percentage',  # New percentage field for claiming
+            'points_from_pay_it_forward_percentage',  # New percentage field for Pay It Forward
+            'points_from_offers_percentage'  # New percentage field for offers
+        ]
+
+    # Helper function to calculate the percentage
+    def calculate_percentage(self, part, total):
+        if total == 0:  # Prevent division by zero
+            return 0
+        return (part / total) * 100
+
+    # Method to calculate the percentage of points acquired from claiming
+    def get_points_from_claiming_percentage(self, obj):
+        return self.calculate_percentage(obj.points_from_claiming, obj.aura_points)
+
+    # Method to calculate the percentage of points acquired from Pay It Forward
+    def get_points_from_pay_it_forward_percentage(self, obj):
+        return self.calculate_percentage(obj.points_from_pay_it_forward, obj.aura_points)
+
+    # Method to calculate the percentage of points acquired from offers
+    def get_points_from_offers_percentage(self, obj):
+        return self.calculate_percentage(obj.points_from_offers, obj.aura_points)
 
 class CustomAuthTokenSerializer(serializers.Serializer):
     username = serializers.CharField(label="Username")
