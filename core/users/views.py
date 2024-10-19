@@ -1,16 +1,11 @@
-# users/views.py
-
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from users.models import UserProfile, CustomUser
+from users.models import UserProfile, CustomUser, Follow
 from users.serializers import CustomUserSerializer, UserProfileSerializer, FollowSerializer, CustomAuthTokenSerializer
-
-
-
 
 class CustomAuthToken(ObtainAuthToken):
     serializer_class = CustomAuthTokenSerializer
