@@ -9,7 +9,7 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RandomActOfKindness
-        fields = ['id', 'title', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'completed_at', 'rak_claim']
+        fields = ['id', 'title', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'completed_at', 'claims', 'rak_claim' 'allow_collaborators']
 
     def update(self, instance, validated_data):
         instance.title = validated_data.get('title', instance.title)
@@ -31,26 +31,29 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
         return None
 
 class RAKClaimSerializer(serializers.ModelSerializer):
-    claimant = serializers.ReadOnlyField(source='claimant.username')
+    claimant = serializers.SerializerMethodField()  # Updated to handle anonymous claims dynamically
 
     class Meta:
         model = RAKClaim
         fields = ['id', 'rak', 'claimant', 'claimed_at', 'details', 'claim_anonymously']
 
-    def create(self, validated_data):
-        rak = validated_data.get('rak')  # This will already be a RandomActOfKindness instance
-        
-        # Create the claim and set it on the RAK
-        claim = RAKClaim.objects.create(**validated_data)
-        rak.rak_claim = claim  # Ensure the RAK has the claim linked
-        rak.save()  # Save the RAK with the linked claim
-
-        return claim
-
+    # Method to return 'Anonymous' if claim_anonymously is True
     def get_claimant(self, obj):
         if obj.claim_anonymously:
             return "Anonymous"
-        return obj.claimant.username
+        return obj.claimant.username  # If not anonymous, return username
+
+    def create(self, validated_data):
+        rak = validated_data.get('rak')  # Get the RAK instance
+
+        # Create the claim without directly linking it in the RAK
+        claim = RAKClaim.objects.create(**validated_data)
+        
+        # Save the RAK to update its status (if needed)
+        rak.save()  
+
+        return claim
+
 
 class RAKClaimListSerializer(serializers.ModelSerializer):
     claimant = serializers.ReadOnlyField(source='claimant.username')

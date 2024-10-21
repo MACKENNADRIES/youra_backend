@@ -101,17 +101,19 @@ class RAKClaimList(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # Include context to pass the request object to the serializer
-        serializer = RAKClaimSerializer(data=request.data, context={'request': request})  
-
+        serializer = RAKClaimSerializer(data=request.data, context={'request': request})
+        
         if serializer.is_valid():
-            try:
-                # Save the claim with the current user as the claimant
-                claimed_rak = serializer.save(claimant=request.user)
+            rak = RandomActOfKindness.objects.get(id=serializer.validated_data['rak'].id)
 
-                # Automatically set the RandomActOfKindness status to 'in_progress'
-                claimed_rak.rak.status = 'in_progress'
-                claimed_rak.rak.save()
+            # Check if the RAK allows multiple claimants
+            if not rak.allow_collaborators and rak.claims.exists():  # Use 'claims' related_name
+                return Response({"error": "This RAK has already been claimed."}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                claimed_rak = serializer.save(claimant=request.user)
+                rak.status = 'in_progress'  # Update RAK status to 'in_progress'
+                rak.save()
 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -119,6 +121,7 @@ class RAKClaimList(APIView):
                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class RAKClaimDetail(APIView):
     permission_classes = [IsOwnerOrClaimant]
@@ -158,12 +161,12 @@ class JoinRAKView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rak_id):
-        rak_post = get_object_or_404(RandomActOfKindness, id=rak_id)
-        try:
-            rak_post.add_collaborator(request.user)
-            return Response({"message": "You have joined as a collaborator."})
-        except ValueError as e:
-            return Response({"error": str(e)}, status=400)
+        rak = get_object_or_404(RandomActOfKindness, id=rak_id)
+        if request.user not in rak.collaborators.all():
+            rak.collaborators.add(request.user)
+            rak.save()
+            return Response({"message": "You have joined as a collaborator."}, status=201)
+        return Response({"error": "You are already a collaborator."}, status=400)
 
 class PayItForwardView(APIView):
     permission_classes = [IsAuthenticated]
