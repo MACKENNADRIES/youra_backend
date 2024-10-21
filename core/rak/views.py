@@ -38,6 +38,18 @@ class RandomActOfKindnessDetail(APIView):
 
     def get(self, request, pk):
         rak_post = self.get_object(pk)
+
+        list_claims = request.query_params.get('list_claims', '').lower()  # Get and convert to lowercase
+        if list_claims:
+            claims = rak_post.claims.all()
+            claims_data = [
+                {
+                    'claimer': claim.claimant.username, 
+                    'claimed_at': claim.claimed_at,  
+                    'status': rak_post.status  
+                } for claim in claims
+            ]
+            return Response(claims_data, status=status.HTTP_200_OK)
         if rak_post.post_anonymously:
             rak_data = {
                 'title': rak_post.title,

@@ -39,7 +39,7 @@ class RandomActOfKindness(models.Model):
     allow_collaborators = models.BooleanField(default=False)  # Optional field to allow multiple claimants
     collaborators = models.ManyToManyField(User, related_name='rak_collaborators', blank=True)
     aura_points_awarded = models.BooleanField(default=False)
-    rak_claims = models.ManyToManyField('RAKClaim', related_name='raks', blank=True, ) # for collaborate 
+    # rak_claims = models.ManyToManyField('RAKClaim', related_name='raks', blank=True) # for collaborate 
 
 
     def enable_collaborators(self):
