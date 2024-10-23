@@ -2,30 +2,14 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
+from core.rak.choices import POST_TYPE_CHOICES, STATUS_CHOICES, VISIBILITY_CHOICES
+
 User = get_user_model()
 
 
 class RandomActOfKindness(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="rak_posts")
-
-    STATUS_CHOICES = [
-        ("open", "Open"),
-        ("claimed", "Claimed"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-    ]
-
-    VISIBILITY_CHOICES = [
-        ("public", "Public"),
-        ("private", "Private"),
-    ]
-
-    POST_TYPE_CHOICES = [
-        ("offer", "Offer"),
-        ("request", "Request"),
-    ]
-
     title = models.TextField()
     description = models.TextField()
     media = models.FileField(upload_to="rak_media/", blank=True, null=True)
