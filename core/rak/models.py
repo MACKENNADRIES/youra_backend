@@ -2,35 +2,59 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from core.rak.choices import POST_TYPE_CHOICES, STATUS_CHOICES, VISIBILITY_CHOICES
+from rak.choices import POST_TYPE_CHOICES, STATUS_CHOICES
 
 User = get_user_model()
 
 
+class Claimant(models.Model):
+    claimer = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.TextField(max_length=255, help_text="Comment left by claimant")
+    anonymous_claimant = models.BooleanField(
+        default=False, help_text="Keep Claimant anonymous"
+    )
+    claimed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"RAK claimed by {self.claimer.username} on {self.claimed_at}"
+
+
 class RandomActOfKindness(models.Model):
-    creator = models.ForeignKey(User, on_delete=models.CASCADE)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="rak_posts")
-    title = models.TextField()
-    description = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.TextField(max_length=30)
+    description = models.TextField(max_length=255)
     media = models.FileField(upload_to="rak_media/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="open")
-    visibility = models.CharField(
-        max_length=10, choices=VISIBILITY_CHOICES, default="public"
+    private = models.BooleanField(
+        default=False, help_text="Private is only displayed to followers"
     )
-    post_type = models.CharField(max_length=10, choices=POST_TYPE_CHOICES)
-    aura_points = models.PositiveIntegerField(default=10)
+    rak_type = models.CharField(max_length=10, choices=POST_TYPE_CHOICES)
+    action = models.TextField(
+        max_length=255, help_text="Action or price requirement needed to fullfill rak"
+    )
+    aura_points_value = models.PositiveIntegerField(default=10)
     completed_at = models.DateTimeField(null=True, blank=True)
-    is_paid_forward = models.BooleanField(default=False)
-    post_anonymously = models.BooleanField(default=False)
-    allow_collaborators = models.BooleanField(
-        default=False
-    )  # Optional field to allow multiple claimants
-    collaborators = models.ManyToManyField(
-        User, related_name="rak_collaborators", blank=True
+
+    anonymous_rak = models.BooleanField(
+        default=False, help_text="Keep created by anonymous"
     )
-    aura_points_awarded = models.BooleanField(default=False)
+    allow_collaborators = models.BooleanField(
+        default=False, help_text="Optional field to allow multiple claimants"
+    )
+    claimed_by = models.ForeignKey(
+        Claimant,
+        related_name="rak_collaborators",
+        blank=True,
+        on_delete=models.CASCADE,
+        null=True,
+    )
+
     # rak_claims = models.ManyToManyField('RAKClaim', related_name='raks', blank=True) # for collaborate
+    @property
+    def is_paid_forward(self):
+        """Returns true if this RAK was created with a Pay it forward"""
+        return self.is_paid_forward.all().exists()
 
     def enable_collaborators(self):
         self.allow_collaborators = True
@@ -57,7 +81,7 @@ class RandomActOfKindness(models.Model):
         self.status = "claimed"
         self.save()
 
-        RAKClaim.objects.create(rak=self, claimant=user)
+        # RAKClaim.objects.create(rak=self, claimant=user)
 
     def complete_rak(self):
         if self.status == "completed":
@@ -115,8 +139,11 @@ class PayItForward(models.Model):
         on_delete=models.CASCADE,
         related_name="pay_it_forward_instance",
     )
-    pay_it_forward_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def paid_forward_by(self):
+        return self.new_rak.created_by
 
     def __str__(self):
         return f"Pay It Forward by {self.pay_it_forward_by.username} for {self.original_rak.title}"
