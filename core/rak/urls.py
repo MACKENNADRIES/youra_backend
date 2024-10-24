@@ -9,8 +9,9 @@ urlpatterns = [
         views.RandomActOfKindnessUpdateView.as_view(),
         name="rak-update",
     ),
-    path("rak/<int:pk>/delete/", views.RAKDeleteView.as_view(), name="rak-delete"),
+    # path("rak/<int:pk>/delete/", views.RAKDeleteView.as_view(), name="rak-delete"),
     path("rak/unclaimed/", views.UnclaimedRAKListView.as_view(), name="rak-unclaimed"),
+    path("rak/claimed/", views.ClaimedRAKListView.as_view(), name="rak-cllaimed"),
     path("rak/<int:pk>/claim/", views.RAKClaimView.as_view(), name="rak-claim"),
     path(
         "rak/<int:pk>/enable-collaborators/",

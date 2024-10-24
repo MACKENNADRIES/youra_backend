@@ -5,7 +5,7 @@ Mackenna Dries
 ## Planning:
 
 ### Concept/Name
-**YOURA** is a platform designed to inspire and promote kindness through Random Acts of Kindness (RAKs). Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
+**YOURA** is a platform designed to inspire and promote positivity through Random Acts of Kindness (RAKs). Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
 
 The app integrates social media features, allowing users to follow others, share posts, upload media, and comment on acts of kindness. It encourages users to pay it forward after receiving a RAK, ensuring that kindness spreads throughout the community. With a focus on positive interactions, users can take part in kindness challenges, earn achievements, and build an inspiring feed of their contributions.
 
@@ -64,7 +64,17 @@ The app fosters a supportive environment where users can track their impact, con
   - show a collaboration on insomnia 
   - anonymous!!!!! MAKE SURE THIS WORKS 
   - update user detail!!!! - change username password etc 
+  - ordering projects in a feed - by latest post or by other filters
+  - only allowing a claim if rak is open
+  - making sure personal details are anonymous
+  - admin functions
+  - align feature instead of like
 
+  - add profile features ( Profile picture, bio etc )
+  - develop feed and explore (wander) page
+  - implemet align with this feature (like)
+  - TEST POINTS AFTER ANONYMOUS CLAIM 
+  - Why when retrieving is it not anonymous 
 ### Design Ideas
 - **The Look and Feel**
   - ethereal look and feel - stardust, glowing auras 
@@ -189,7 +199,7 @@ The app fosters a supportive environment where users can track their impact, con
 ### Leaderboard:
 - Global or local leaderboard showing top contributors based on aura points or completed RAKs.
 
-### Group Acts:
+### Collaboration Acts:
 - Support for group RAKs where multiple users can collaborate on larger acts of kindness.
 
 ### Challenges and Achievements:
@@ -247,22 +257,22 @@ Your crowdfunding project must:
   - [x] Email address
   - [x] Password
 - [x] Ability to create a “project” to be crowdfunded which will include at least the following attributes:
-  - [ ] Title
+  - [x] Title
   - [x] Owner (a user)
   - [x] Description
   - [x] Image
   - [x] Goal - either offering a random act of kindness or requesting one
   - [x] Whether it is currently open to accepting new supporters or not
   - [x] When the project was created
-- [ ] Ability to "claim" to a random act of kindness offer or request. A claim should include at least the following attributes:
+- [x] Ability to "claim" to a random act of kindness offer or request. A claim should include at least the following attributes:
   - [x] An amount, or action
   - [x] The rak_id the claim is for
   - [x] The supporter/user (i.e. who created the pledge)
-  - [ ] Whether the claim is anonymous or not
+  - [ ] Whether the claim is anonymous or not - kind of????
   - [x] A comment to go along with the claim
-- [ ] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
-- [ ] Implement suitable permissions, e.g. who is allowed to delete a pledge?
-- [ ] Return the relevant status codes for both successful and unsuccessful requests to the API.
+- [x] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
+- [x] Implement suitable permissions, e.g. who is allowed to delete a pledge?
+- [x] Return the relevant status codes for both successful and unsuccessful requests to the API.
 - [ ] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
-- [ ] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
+- [x] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
 - [ ] Implement responsive design.

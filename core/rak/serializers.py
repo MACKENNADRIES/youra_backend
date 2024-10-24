@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 class ClaimantSerializer(serializers.ModelSerializer):
-    claimer_username = serializers.CharField(source="claimer.username", read_only=True)
+    claimer_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Claimant
@@ -24,6 +24,12 @@ class ClaimantSerializer(serializers.ModelSerializer):
             "rak": {"read_only": True},
             "comment": {"required": True},
         }
+
+    def get_claimer_username(self, obj):
+        if obj.anonymous_claimant:
+            return "Anon"
+        else:
+            return obj.claimer.username
 
 
 class RandomActOfKindnessSerializer(serializers.ModelSerializer):
