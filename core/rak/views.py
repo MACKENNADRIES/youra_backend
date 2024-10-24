@@ -27,6 +27,30 @@ User = get_user_model()
 
 # 1. Create a RAK post (offer or request)
 class RandomActOfKindnessCreateView(generics.CreateAPIView):
+    """
+    Create a new Random Act of Kindness (RAK) post.
+
+    **Endpoint:** `/rak/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **Request Body:**
+    - `title`: String, required.
+    - `description`: String, required.
+    - `media`: File, optional.
+    - `private`: Boolean, optional.
+    - `rak_type`: String, choices are defined in `POST_TYPE_CHOICES`.
+    - `action`: String, required.
+    - `aura_points_value`: Integer, optional.
+    - `anonymous_rak`: Boolean, optional.
+    - `allow_collaborators`: Boolean, optional.
+
+    **Functionality:**
+    - Creates a RAK post (offer or request).
+    """
+
     queryset = RandomActOfKindness.objects.all()
     serializer_class = RandomActOfKindnessSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -37,6 +61,25 @@ class RandomActOfKindnessCreateView(generics.CreateAPIView):
 
 # 2. Update a RAK post (edit an existing post)
 class RandomActOfKindnessUpdateView(generics.RetrieveUpdateAPIView):
+    """
+    Retrieve or update an existing RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/`
+
+    **Methods:**
+    - `GET`: Retrieve RAK details.
+    - `PUT`: Update RAK details.
+    - `PATCH`: Partially update RAK details.
+
+    **Permissions:** Authenticated users only. Only the creator can update.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Update a RAK post (edit an existing post).
+    """
+
     queryset = RandomActOfKindness.objects.all()
     serializer_class = RandomActOfKindnessSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -50,6 +93,19 @@ class RandomActOfKindnessUpdateView(generics.RetrieveUpdateAPIView):
 
 # 3. View all unclaimed RAK posts
 class UnclaimedRAKListView(generics.ListAPIView):
+    """
+    List all unclaimed and public RAK posts.
+
+    **Endpoint:** `/rak/unclaimed/`
+
+    **Method:** `GET`
+
+    **Permissions:** Allow any user.
+
+    **Functionality:**
+    - View all unclaimed RAK posts.
+    """
+
     serializer_class = RandomActOfKindnessSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -59,6 +115,27 @@ class UnclaimedRAKListView(generics.ListAPIView):
 
 # 4. Claim a RAK post – automatically update to 'in progress.'
 class RAKClaimView(views.APIView):
+    """
+    Claim a RAK post, automatically updating its status to 'in progress.'
+
+    **Endpoint:** `/rak/<int:pk>/claim/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post to claim.
+
+    **Request Body:**
+    - `anonymous_claimant`: Boolean, optional.
+    - `comment`: String, optional.
+
+    **Functionality:**
+    - Claim a RAK post – automatically updates to 'in progress.'
+    - Allow users to claim RAKs anonymously.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -76,6 +153,22 @@ class RAKClaimView(views.APIView):
 
 # 5. Enable collaborators on a RAK
 class EnableCollaboratorsView(views.APIView):
+    """
+    Enable collaborators on a RAK post, allowing multiple claimants.
+
+    **Endpoint:** `/rak/<int:pk>/enable-collaborators/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only. Only the creator can enable collaborators.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Collaborate on a RAK post (offer or request).
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -93,6 +186,26 @@ class EnableCollaboratorsView(views.APIView):
 
 # 6. Change the status of a RAK post
 class RAKStatusUpdateView(views.APIView):
+    """
+    Update the status of a RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/status/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only. Only the creator can change the status.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Request Body:**
+    - `status`: String, required. Must be one of ['open', 'in progress', 'completed'].
+
+    **Functionality:**
+    - Change the status of a RAK post.
+    - Award aura points to the claimant(s) once the RAK is completed.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -121,6 +234,26 @@ class RAKStatusUpdateView(views.APIView):
 
 # 9. Create Pay It Forward
 class CreatePayItForwardView(views.APIView):
+    """
+    Create a Pay It Forward, generating a new RAK post linked to an original RAK.
+
+    **Endpoint:** `/rak/<int:pk>/pay-it-forward/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the original completed RAK post.
+
+    **Request Body:**
+    - Fields required to create a new RAK post.
+
+    **Functionality:**
+    - Once a RAK is completed, if the Pay It Forward feature is enabled, forwards are displayed in the feed.
+    - Pay It Forward can be claimed and turns into a new RAK post.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -154,6 +287,19 @@ class CreatePayItForwardView(views.APIView):
 
 # Fetch all RAK claims
 class AllClaimsView(generics.ListAPIView):
+    """
+    List all RAK claims.
+
+    **Endpoint:** `/claims/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Fetch all RAK claims.
+    """
+
     serializer_class = ClaimantSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -163,6 +309,22 @@ class AllClaimsView(generics.ListAPIView):
 
 # Fetch all claimants/collaborators for a RAK
 class RAKClaimantsView(generics.ListAPIView):
+    """
+    List all claimants/collaborators for a specific RAK.
+
+    **Endpoint:** `/rak/<int:pk>/claimants/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Fetch all claimants/collaborators.
+    """
+
     serializer_class = ClaimantSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -174,6 +336,22 @@ class RAKClaimantsView(generics.ListAPIView):
 
 # Fetch user details
 class UserDetailView(generics.RetrieveAPIView):
+    """
+    Retrieve user details.
+
+    **Endpoint:** `/users/<int:pk>/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Fetch user details.
+    """
+
     serializer_class = CustomUserSerializer  # Ensure you have this serializer
     queryset = User.objects.all()
     permission_classes = [permissions.IsAuthenticated]
@@ -181,6 +359,23 @@ class UserDetailView(generics.RetrieveAPIView):
 
 # Display a user’s aura points and percentages towards levels
 class UserAuraPointsView(views.APIView):
+    """
+    Display a user's aura points and percentage towards the next level.
+
+    **Endpoint:** `/users/<int:pk>/aura-points/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Display a user’s aura points and percentages towards levels.
+    - Display how a user’s aura points are calculated.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
@@ -196,6 +391,21 @@ class UserAuraPointsView(views.APIView):
 
 # Display a leaderboard of users based on aura points
 class AuraPointsLeaderboardView(generics.ListAPIView):
+    """
+    Display a leaderboard of users based on aura points.
+
+    **Endpoint:** `/leaderboard/`
+
+    **Method:** `GET`
+
+    **Permissions:** Allow any user.
+
+    **Functionality:**
+    - Display a leaderboard of users based on aura points.
+    - Assign colors to different aura levels (handled in serializers or frontend).
+    - Award badges based on aura levels, displayed on the profile.
+    """
+
     serializer_class = UserProfileSerializer  # Ensure you have this serializer
     permission_classes = [permissions.AllowAny]
 
@@ -205,6 +415,22 @@ class AuraPointsLeaderboardView(generics.ListAPIView):
 
 # Follow/unfollow users
 class FollowUserView(views.APIView):
+    """
+    Follow a user.
+
+    **Endpoint:** `/users/<int:pk>/follow/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to follow.
+
+    **Functionality:**
+    - Follow users.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -219,6 +445,22 @@ class FollowUserView(views.APIView):
 
 
 class UnfollowUserView(views.APIView):
+    """
+    Unfollow a user.
+
+    **Endpoint:** `/users/<int:pk>/unfollow/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to unfollow.
+
+    **Functionality:**
+    - Unfollow users.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -229,6 +471,22 @@ class UnfollowUserView(views.APIView):
 
 # Block users
 class BlockUserView(views.APIView):
+    """
+    Block a user.
+
+    **Endpoint:** `/users/<int:pk>/block/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to block.
+
+    **Functionality:**
+    - Block users.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -244,6 +502,22 @@ class BlockUserView(views.APIView):
 
 # Report users
 class ReportUserView(views.APIView):
+    """
+    Report a user for inappropriate behavior.
+
+    **Endpoint:** `/users/<int:pk>/report/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to report.
+
+    **Functionality:**
+    - Report users.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -254,6 +528,19 @@ class ReportUserView(views.APIView):
 
 # Display a curated feed of followed users
 class UserFeedView(generics.ListAPIView):
+    """
+    Display a curated feed of RAKs from users the current user follows.
+
+    **Endpoint:** `/feed/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Display a curated feed of followed users.
+    """
+
     serializer_class = RandomActOfKindnessSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -267,6 +554,19 @@ class UserFeedView(generics.ListAPIView):
 
 # Explore page: View RAKs from people I don't follow
 class ExploreRAKView(generics.ListAPIView):
+    """
+    Display RAKs from users the current user does not follow.
+
+    **Endpoint:** `/explore/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - View an explore page with RAKs from people the user doesn’t follow.
+    """
+
     serializer_class = RandomActOfKindnessSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -282,6 +582,22 @@ class ExploreRAKView(generics.ListAPIView):
 
 # Display how a user’s aura points are calculated
 class UserAuraPointsDetailsView(views.APIView):
+    """
+    Display details on how a user's aura points are calculated.
+
+    **Endpoint:** `/users/<int:pk>/aura-points-details/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Display how a user’s aura points are calculated (RAKs, Pay It Forwards, etc.).
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
@@ -298,6 +614,23 @@ class UserAuraPointsDetailsView(views.APIView):
 
 # Add profile details: profile picture, bio, etc.
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
+    """
+    Retrieve or update the user's profile details.
+
+    **Endpoint:** `/user/profile/`
+
+    **Methods:**
+    - `GET`: Retrieve profile details.
+    - `PUT`: Update profile details.
+    - `PATCH`: Partially update profile details.
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Add profile details: profile picture, bio, etc.
+    - Allow users to create and manage posts (handled elsewhere).
+    """
+
     serializer_class = UserProfileSerializer  # Ensure you have this serializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -307,6 +640,19 @@ class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
 
 # Delete a user
 class UserDeleteView(views.APIView):
+    """
+    Deactivate the user's account.
+
+    **Endpoint:** `/user/delete/`
+
+    **Method:** `DELETE`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Delete a user (deactivate account).
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def delete(self, request):
@@ -320,6 +666,23 @@ class UserDeleteView(views.APIView):
 
 # Delete a RAK post
 class RAKDeleteView(generics.DestroyAPIView):
+    """
+    Delete a RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/delete/`
+
+    **Method:** `DELETE`
+
+    **Permissions:** Authenticated users only. Only the creator can delete.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Delete a RAK post.
+    - Allow users to create and manage posts (delete part).
+    """
+
     queryset = RandomActOfKindness.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
