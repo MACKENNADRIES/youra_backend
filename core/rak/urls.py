@@ -11,8 +11,18 @@ urlpatterns = [
     ),
     # path("rak/<int:pk>/delete/", views.RAKDeleteView.as_view(), name="rak-delete"),
     path("rak/unclaimed/", views.UnclaimedRAKListView.as_view(), name="rak-unclaimed"),
-    path("rak/claimed/", views.ClaimedRAKListView.as_view(), name="rak-cllaimed"),
+    path("rak/claimed/", views.ClaimedRAKListView.as_view(), name="rak-claimed"),
     path("rak/<int:pk>/claim/", views.RAKClaimView.as_view(), name="rak-claim"),
+    path(
+        "rak/<int:pk>/collaborators/",
+        views.RAKCollaboratorsView.as_view(),
+        name="rak-collaborators",
+    ),
+    path(
+        "rak/<int:pk>/collaborate/",
+        views.RAKCollaborateView.as_view(),
+        name="rak-collaborate",
+    ),
     path(
         "rak/<int:pk>/enable-collaborators/",
         views.EnableCollaboratorsView.as_view(),

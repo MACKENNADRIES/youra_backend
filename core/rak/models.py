@@ -27,6 +27,9 @@ class RandomActOfKindness(models.Model):
         default=False, help_text="Keep created by anonymous"
     )
     allow_collaborators = models.BooleanField(
+        default=False, help_text="Allow multiple collaborators "
+    )
+    allow_claimants = models.BooleanField(
         default=False, help_text="Allow multiple claimants"
     )
 
@@ -39,12 +42,12 @@ class RandomActOfKindness(models.Model):
         return self.pay_it_forwards.exists()
 
     def enable_collaborators(self):
-        self.allow_collaborators = True
+        self.allow_claimants = True
         self.save()
 
     def claim_rak(self, user, comment="", anonymous_claimant=False):
         if self.status != "open" and not (
-            self.allow_collaborators and self.status == "in progress"
+            self.allow_claimants and self.status == "in progress"
         ):
             raise ValueError(
                 "This RAK cannot be claimed because it has already been claimed or completed."
@@ -67,13 +70,39 @@ class RandomActOfKindness(models.Model):
         )
 
         # Update RAK status
-        if not self.allow_collaborators:
+        if not self.allow_claimants:
             self.status = "in progress"
         elif self.status == "open":
             self.status = "in progress"
         self.save()
 
         return claimant
+
+    def collaborate(self, user, comment="", anonymous_collaborator=False):
+        if not self.allow_collaborators:
+            raise ValueError("Collaborators are not allowed for this RAK.")
+
+        if self.created_by == user:
+            raise ValueError("You cannot collaborate on your own RAK.")
+
+        # Check if the user has already collaborated on this RAK
+        if self.collabs.filter(collaborator=user).exists():
+            raise ValueError("You have already collaborated on this RAK.")
+
+        # Create a Collaborators instance
+        collaborator = Collaborators.objects.create(
+            collaborator=user,
+            rak=self,
+            comment=comment,
+            anonymous_collaborator=anonymous_collaborator,
+        )
+
+        # Update RAK status
+        if self.status == "open":
+            self.status = "in progress"
+            self.save()
+
+        return collaborator
 
     def complete_rak(self):
         if self.status == "completed":
@@ -108,6 +137,21 @@ class Claimant(models.Model):
 
     def __str__(self):
         return f"RAK claimed by {self.claimer.username} on {self.claimed_at}"
+
+
+class Collaborators(models.Model):
+    collaborator = models.ForeignKey(User, on_delete=models.CASCADE)
+    rak = models.ForeignKey(
+        RandomActOfKindness, on_delete=models.CASCADE, related_name="collabs"
+    )
+    comment = models.TextField(max_length=255, help_text="Comment left by collaborator")
+    anonymous_collaborator = models.BooleanField(
+        default=False, help_text="Keep Collaborator anonymous"
+    )
+    started_collabing_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"RAK collaborated with {self.collaborator.username} on {self.started_collabing_at}"
 
 
 class Notification(models.Model):

@@ -10,17 +10,18 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from .models import (
     RandomActOfKindness,
     Claimant,
+    Collaborators,
     Notification,
     PayItForward,
-    # Ensure you have UserProfile model
-    # UserProfile,
 )
 from rak.serializers import (
     RandomActOfKindnessSerializer,
     ClaimantSerializer,
+    CollaboratorsSerializer,
     NotificationSerializer,
     PayItForwardSerializer,
 )
+from users.models import UserProfile
 from users.serializers import UserProfileSerializer, CustomUserSerializer
 
 User = get_user_model()
@@ -47,6 +48,7 @@ class RandomActOfKindnessCreateView(APIView):
     - `aura_points_value`: Integer, optional.
     - `anonymous_rak`: Boolean, optional.
     - `allow_collaborators`: Boolean, optional.
+    - `allow_claimants`: Boolean, optional.
 
     **Functionality:**
     - Creates a RAK post (offer or request).
@@ -149,6 +151,7 @@ class UnclaimedRAKListView(APIView):
         return Response(serializer.data)
 
 
+# New: View all claimed RAK posts
 class ClaimedRAKListView(APIView):
     """
     List all claimed and public RAK posts.
@@ -160,7 +163,7 @@ class ClaimedRAKListView(APIView):
     **Permissions:** Allow any user.
 
     **Functionality:**
-    - View all unclaimed RAK posts.
+    - View all claimed RAK posts.
     """
 
     permission_classes = [permissions.AllowAny]
@@ -168,7 +171,7 @@ class ClaimedRAKListView(APIView):
     def get(self, request):
         raks = RandomActOfKindness.objects.filter(
             status="in progress", private=False, claims__isnull=False
-        )
+        ).distinct()
         serializer = RandomActOfKindnessSerializer(raks, many=True)
         return Response(serializer.data)
 
@@ -211,10 +214,51 @@ class RAKClaimView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# New: Collaborate on a RAK post
+class RAKCollaborateView(APIView):
+    """
+    Collaborate on a RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/collaborate/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post to collaborate on.
+
+    **Request Body:**
+    - `anonymous_collaborator`: Boolean, optional.
+    - `comment`: String, optional.
+
+    **Functionality:**
+    - Collaborate on a RAK post.
+    - Allow users to collaborate on RAKs anonymously.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        anonymous = request.data.get("anonymous_collaborator", False)
+        comment = request.data.get("comment", "")
+        try:
+            rak.collaborate(
+                request.user, comment=comment, anonymous_collaborator=anonymous
+            )
+            return Response(
+                {"detail": "Collaboration started successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # 5. Enable collaborators on a RAK
 class EnableCollaboratorsView(APIView):
     """
-    Enable collaborators on a RAK post, allowing multiple claimants.
+    Enable collaborators on a RAK post, allowing multiple collaborators.
 
     **Endpoint:** `/rak/<int:pk>/enable-collaborators/`
 
@@ -226,7 +270,7 @@ class EnableCollaboratorsView(APIView):
     - `pk`: ID of the RAK post.
 
     **Functionality:**
-    - Collaborate on a RAK post (offer or request).
+    - Enable collaboration on a RAK post.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -263,7 +307,7 @@ class RAKStatusUpdateView(APIView):
 
     **Functionality:**
     - Change the status of a RAK post.
-    - Award aura points to the claimant(s) once the RAK is completed.
+    - Award aura points to the claimant(s) and collaborators once the RAK is completed.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -360,10 +404,10 @@ class AllClaimsView(APIView):
         return Response(serializer.data)
 
 
-# Fetch all claimants/collaborators for a RAK
+# Fetch all claimants for a RAK
 class RAKClaimantsView(APIView):
     """
-    List all claimants/collaborators for a specific RAK.
+    List all claimants for a specific RAK.
 
     **Endpoint:** `/rak/<int:pk>/claimants/`
 
@@ -375,7 +419,7 @@ class RAKClaimantsView(APIView):
     - `pk`: ID of the RAK post.
 
     **Functionality:**
-    - Fetch all claimants/collaborators.
+    - Fetch all claimants.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -384,6 +428,33 @@ class RAKClaimantsView(APIView):
         rak = get_object_or_404(RandomActOfKindness, pk=pk)
         claimants = rak.claims.all()
         serializer = ClaimantSerializer(claimants, many=True)
+        return Response(serializer.data)
+
+
+# New: Fetch all collaborators for a RAK
+class RAKCollaboratorsView(APIView):
+    """
+    List all collaborators for a specific RAK.
+
+    **Endpoint:** `/rak/<int:pk>/collaborators/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Fetch all collaborators.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        collaborators = rak.collabs.all()
+        serializer = CollaboratorsSerializer(collaborators, many=True)
         return Response(serializer.data)
 
 
