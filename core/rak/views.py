@@ -3,10 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404, Http404
-from .models import RandomActOfKindness, RAKClaim, PayItForward
+from .models import RandomActOfKindness, PayItForward
 from .serializers import (
     RandomActOfKindnessSerializer,
-    RAKClaimSerializer,
     PayItForwardSerializer,
 )  # Remove PayItForwardSerializer
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -128,64 +127,64 @@ class RandomActOfKindnessDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class RAKClaimList(APIView):
-    permission_classes = [IsAuthenticated]
+# class RAKClaimList(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = RAKClaimSerializer(data=request.data, context={"request": request})
+#     def post(self, request):
+#         serializer = RAKClaimSerializer(data=request.data, context={"request": request})
 
-        if serializer.is_valid():
-            rak = RandomActOfKindness.objects.get(
-                id=serializer.validated_data["rak"].id
-            )
+#         if serializer.is_valid():
+#             rak = RandomActOfKindness.objects.get(
+#                 id=serializer.validated_data["rak"].id
+#             )
 
-            # Check if the RAK allows multiple claimants
-            if (
-                not rak.allow_collaborators and rak.claims.exists()
-            ):  # Use 'claims' related_name
-                return Response(
-                    {"error": "This RAK has already been claimed."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+#             # Check if the RAK allows multiple claimants
+#             if (
+#                 not rak.allow_collaborators and rak.claims.exists()
+#             ):  # Use 'claims' related_name
+#                 return Response(
+#                     {"error": "This RAK has already been claimed."},
+#                     status=status.HTTP_400_BAD_REQUEST,
+#                 )
 
-            try:
-                claimed_rak = serializer.save(claimant=request.user)
-                rak.status = "in_progress"  # Update RAK status to 'in_progress'
-                rak.save()
+#             try:
+#                 claimed_rak = serializer.save(claimant=request.user)
+#                 rak.status = "in_progress"  # Update RAK status to 'in_progress'
+#                 rak.save()
 
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+#                 return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-            except Exception as e:
-                return Response(
-                    {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+#             except Exception as e:
+#                 return Response(
+#                     {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#                 )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RAKClaimDetail(APIView):
-    permission_classes = [IsOwnerOrClaimant]
+# class RAKClaimDetail(APIView):
+#     permission_classes = [IsOwnerOrClaimant]
 
-    def get_object(self, pk):
-        return get_object_or_404(RAKClaim, pk=pk)
+#     def get_object(self, pk):
+#         return get_object_or_404(RAKClaim, pk=pk)
 
-    def get(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        serializer = RAKClaimSerializer(claimed_rak)
-        return Response(serializer.data)
+#     def get(self, request, pk):
+#         claimed_rak = self.get_object(pk)
+#         serializer = RAKClaimSerializer(claimed_rak)
+#         return Response(serializer.data)
 
-    def put(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        serializer = RAKClaimSerializer(claimed_rak, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def put(self, request, pk):
+#         claimed_rak = self.get_object(pk)
+#         serializer = RAKClaimSerializer(claimed_rak, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        claimed_rak.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+#     def delete(self, request, pk):
+#         claimed_rak = self.get_object(pk)
+#         claimed_rak.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class EnableCollaborationView(APIView):

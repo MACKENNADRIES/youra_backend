@@ -2,8 +2,8 @@ from django.urls import path
 from .views import (
     RandomActOfKindnessList,
     RandomActOfKindnessDetail,
-    RAKClaimList,
-    RAKClaimDetail,
+    # RAKClaimList,
+    # RAKClaimDetail,
     PayItForwardView,
     EnableCollaborationView,
     JoinRAKView,
@@ -20,12 +20,12 @@ urlpatterns = [
         "rakposts/<int:pk>/", RandomActOfKindnessDetail.as_view(), name="rakpost-detail"
     ),  # Retrieve, update, delete RAK posts
     # Claim-related endpoints
-    path(
-        "claimedraks/", RAKClaimList.as_view(), name="rakclaim-list"
-    ),  # List and create RAK claims
-    path(
-        "rakclaims/<int:pk>/", RAKClaimDetail.as_view(), name="rakclaim-detail"
-    ),  # Retrieve, update, delete specific RAK claims
+    # path(
+    #     "claimedraks/", RAKClaimList.as_view(), name="rakclaim-list"
+    # ),  # List and create RAK claims
+    # path(
+    #     "rakclaims/<int:pk>/", RAKClaimDetail.as_view(), name="rakclaim-detail"
+    # ),  # Retrieve, update, delete specific RAK claims
     # Pay It Forward functionality
     path(
         "payitforward/<int:rak_id>/", PayItForwardView.as_view(), name="pay-it-forward"
