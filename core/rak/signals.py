@@ -1,74 +1,70 @@
+# signals.py
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
-from .models import RandomActOfKindness, UserProfile, Badge, Notification
+from .models import RandomActOfKindness, Notification
+from users.models import UserProfile
 
-# Get the correct User model
 User = get_user_model()
+
 
 @receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
-    # Handle aura points when RandomActOfKindness is completed
+    # Only award aura points if the RAK is completed and it's not a Pay It Forward action
     if instance.completed_at and not instance.is_paid_forward:
-        user_profile = instance.creator.userprofile
-        user_profile.aura_points += instance.aura_points  # Use correct field name for aura points
-        user_profile.calculate_level()  # Update aura level
-        user_profile.save()
+        # Case 1: RAK is an offer, award points to the created_by
+        if instance.rak_type == "offer":
+            user_profile = instance.created_by.userprofile
+            user_profile.aura_points += (
+                instance.aura_points
+            )  # Add aura points to the created_by
+            user_profile.points_from_offers += (
+                instance.aura_points
+            )  # Track points from offers
+            user_profile.save()
 
-        # Award badges based on completed Random Acts of Kindness milestones
-        completed_raks = RandomActOfKindness.objects.filter(creator=instance.creator, completed_at__isnull=False).count()
-        if completed_raks >= 1:
-            badge, _ = Badge.objects.get_or_create(
-                name="First RAK Completed", 
-                defaults={'description': "Awarded for completing your first Random Act of Kindness!"}
+        # Case 2: RAK is a request, no points for the owner, claimant gets points
+        elif instance.rak_type == "request" and instance.status == "completed":
+            for claim in instance.claims.all():
+                claimant_profile = claim.claimer.userprofile
+                claimant_profile.points_from_claiming += instance.aura_points_value
+                claimant_profile.save()
+
+    # Case 3: If Pay It Forward is completed, award points to the original RAK owner (requester)
+    if (
+        instance.is_paid_forward
+        and instance.status == "completed"
+        and instance.rak_type == "request"
+    ):
+        original_rak_owner_profile = instance.created_by.userprofile
+        aura_points_for_owner = (
+            instance.aura_points
+        )  # The original requester now gets the points
+        original_rak_owner_profile.aura_points += aura_points_for_owner
+        original_rak_owner_profile.points_from_pay_it_forward += (
+            aura_points_for_owner  # Track points from Pay It Forward
+        )
+        original_rak_owner_profile.save()
+
+    # Handle notifications
+    if instance.status == "claimed":
+        for claim in instance.claims.all():
+            Notification.objects.create(
+                recipient=instance.created_by,
+                message=f"Your Random Act of Kindness has been claimed by {claim.claimer.username}.",
             )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 10:
-            badge, _ = Badge.objects.get_or_create(
-                name="10 RAKs Completed", 
-                defaults={'description': "Awarded for completing 10 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 50:
-            badge, _ = Badge.objects.get_or_create(
-                name="50 RAKs Completed", 
-                defaults={'description': "Awarded for completing 50 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
-        if completed_raks >= 100:
-            badge, _ = Badge.objects.get_or_create(
-                name="100 RAKs Completed", 
-                defaults={'description': "Awarded for completing 100 Random Acts of Kindness."}
-            )
-            user_profile.user.badges.add(badge)
-
-    # Handle Pay It Forward logic
-    if instance.is_paid_forward:
-        # Ensure the RAK has been claimed
-        if hasattr(instance, 'rak_claim'):
-            claimant_profile = instance.rak_claim.claimant.userprofile
-            bonus_points = 15  # Define bonus points for Pay It Forward
-            claimant_profile.aura_points += bonus_points
-            claimant_profile.calculate_level()
-            claimant_profile.save()
-
-    # Send notifications
-    if instance.status == 'claimed':
-        message = f"Your Random Act of Kindness has been claimed by {instance.rak_claim.claimant.username}."
-        Notification.objects.create(recipient=instance.creator, message=message)
-
     if instance.completed_at:
-        message = f"Your Random Act of Kindness has been completed."
-        Notification.objects.create(recipient=instance.creator, message=message)
+        Notification.objects.create(
+            recipient=instance.created_by,
+            message=f"Your Random Act of Kindness has been completed.",
+        )
+
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.userprofile.save()
+    else:
+        # Ensure the UserProfile exists
+        UserProfile.objects.get_or_create(user=instance)

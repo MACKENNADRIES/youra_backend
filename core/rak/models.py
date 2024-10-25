@@ -1,164 +1,184 @@
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
 from django.contrib.auth import get_user_model
-from .utils import get_aura_level
+
+from rak.choices import POST_TYPE_CHOICES, STATUS_CHOICES
 
 User = get_user_model()
 
+
 class RandomActOfKindness(models.Model):
-    creator = models.ForeignKey(User, on_delete=models.CASCADE)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_posts')
-
-    STATUS_CHOICES = [
-        ('open', 'Open'),
-        ('claimed', 'Claimed'),
-        ('completed', 'Completed'),
-    ]
-    
-    VISIBILITY_CHOICES = [
-        ('public', 'Public'),
-        ('private', 'Private'),
-    ]
-    
-    POST_TYPE_CHOICES = [
-        ('offer', 'Offer'),
-        ('request', 'Request'),
-    ]
-
-    description = models.TextField()
-    media = models.FileField(upload_to='rak_media/', blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.TextField(max_length=30)
+    description = models.TextField(max_length=255)
+    media = models.FileField(upload_to="rak_media/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
-    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
-    post_type = models.CharField(max_length=10, choices=POST_TYPE_CHOICES)
-    aura_points = models.PositiveIntegerField(default=10)
-    completed_at = models.DateTimeField(null=True)
-    is_paid_forward = models.BooleanField(default=False)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="open")
+    private = models.BooleanField(
+        default=False, help_text="Private is only displayed to followers"
+    )
+    rak_type = models.CharField(max_length=10, choices=POST_TYPE_CHOICES)
+    action = models.TextField(
+        max_length=255, help_text="Action or price requirement needed to fulfill RAK"
+    )
+    aura_points_value = models.PositiveIntegerField(default=10)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    anonymous_rak = models.BooleanField(
+        default=False, help_text="Keep created by anonymous"
+    )
+    allow_collaborators = models.BooleanField(
+        default=False, help_text="Allow multiple collaborators "
+    )
+    allow_claimants = models.BooleanField(
+        default=False, help_text="Allow multiple claimants"
+    )
 
-    # Method to handle claiming of RAK
-    def claim_rak(self, user):
-        if self.status != 'open':
-            raise ValueError("This RAK cannot be claimed because it has already been claimed or completed.")
-        
-        # Prevent the owner from claiming their own RAK
-        if self.creator == user:
-            raise ValueError("You cannot claim your own RAK.")
-        
-        self.status = 'claimed'
+    def __str__(self):
+        return f"RAK: {self.title} by {self.created_by.username}"
+
+    @property
+    def is_paid_forward(self):
+        """Returns true if this RAK was created with a Pay It Forward"""
+        return self.pay_it_forwards.exists()
+
+    def enable_collaborators(self):
+        self.allow_claimants = True
         self.save()
 
-        RAKClaim.objects.create(rak=self, claimant=user)
+    def claim_rak(self, user, comment="", anonymous_claimant=False):
+        if self.status != "open" and not (
+            self.allow_claimants and self.status == "in progress"
+        ):
+            raise ValueError(
+                "This RAK cannot be claimed because it has already been claimed or completed."
+            )
+
+        if self.created_by == user:
+            raise ValueError("You cannot claim your own RAK.")
+
+        # Check if the user has already claimed this RAK
+        existing_claim = self.claims.filter(claimer=user).exists()
+        if existing_claim:
+            raise ValueError("You have already claimed this RAK.")
+
+        # Create a Claimant instance
+        claimant = Claimant.objects.create(
+            claimer=user,
+            rak=self,
+            comment=comment,
+            anonymous_claimant=anonymous_claimant,
+        )
+
+        # Update RAK status
+        if not self.allow_claimants:
+            self.status = "in progress"
+        elif self.status == "open":
+            self.status = "in progress"
+        self.save()
+
+        return claimant
+
+    def collaborate(self, user, comment="", anonymous_collaborator=False):
+        if not self.allow_collaborators:
+            raise ValueError("Collaborators are not allowed for this RAK.")
+
+        if self.created_by == user:
+            raise ValueError("You cannot collaborate on your own RAK.")
+
+        # Check if the user has already collaborated on this RAK
+        if self.collabs.filter(collaborator=user).exists():
+            raise ValueError("You have already collaborated on this RAK.")
+
+        # Create a Collaborators instance
+        collaborator = Collaborators.objects.create(
+            collaborator=user,
+            rak=self,
+            comment=comment,
+            anonymous_collaborator=anonymous_collaborator,
+        )
+
+        # Update RAK status
+        if self.status == "open":
+            self.status = "in progress"
+            self.save()
+
+        return collaborator
 
     def complete_rak(self):
-        if self.status == 'completed':
+        if self.status == "completed":
             return
-        self.status = 'completed'
+
+        self.status = "completed"
         self.completed_at = timezone.now()
-        self.award_aura_points()
         self.save()
 
-    def award_aura_points(self):
-        if self.status == 'completed':
-            user_profile = self.creator.userprofile
-            user_profile.aura_points += self.aura_points  # Award aura points
-            user_profile.calculate_level()
-            user_profile.save()
-        else:
-            raise ValueError("Aura points can only be awarded once the RAK is completed.")
+        # Award aura points to all claimants
+        for claim in self.claims.all():
+            claimant_profile = claim.claimer.userprofile
+            claimant_profile.aura_points += self.aura_points_value
+            claimant_profile.save()
+            claimant_profile.calculate_level()  # Update aura level if necessary
 
-    # Handle Pay It Forward
-    def pay_it_forward(self):
-        if self.is_paid_forward:
-            raise ValueError("This RAK has already been paid forward.")
-        self.is_paid_forward = True
-        self.save()
-        self.award_pay_it_forward_bonus()
+    def send_notification(self, message):
+        Notification.objects.create(recipient=self.created_by, message=message)
 
-    def award_pay_it_forward_bonus(self):
-        claimant_profile = self.rak_claim.claimant.userprofile
-        bonus_points = 15
-        claimant_profile.aura_points += bonus_points
-        claimant_profile.calculate_level()
-        claimant_profile.save()
 
-    def update_status(self, new_status):
-        if self.status == 'completed':
-            raise ValueError("Cannot update a completed RAK.")
-        self.status = new_status
-        self.save()
-
-def save(self, *args, **kwargs):
-    # Only apply the validation check for new RAKs, not when updating existing ones
-    if self._state.adding:  # This checks if the instance is being created
-        if RandomActOfKindness.objects.filter(
-            creator=self.creator, 
-            description=self.description, 
-            created_at__gte=timezone.now() - timedelta(minutes=10)
-        ).exists():
-            raise ValueError("You have already posted a similar RAK recently.")
-    
-    super().save(*args, **kwargs)
-
-class PayItForward(models.Model):
-    original_rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='original_rak')
-    new_rak = models.ForeignKey(RandomActOfKindness, on_delete=models.CASCADE, related_name='pay_it_forward_rak')
-    bonus_points = models.PositiveIntegerField(default=15)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class RAKClaim(models.Model):
-    rak = models.OneToOneField(RandomActOfKindness, on_delete=models.CASCADE, related_name='rak_claim')
-    claimant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='rak_claims')
+class Claimant(models.Model):
+    claimer = models.ForeignKey(User, on_delete=models.CASCADE)
+    rak = models.ForeignKey(
+        RandomActOfKindness, on_delete=models.CASCADE, related_name="claims"
+    )
+    comment = models.TextField(max_length=255, help_text="Comment left by claimant")
+    anonymous_claimant = models.BooleanField(
+        default=False, help_text="Keep Claimant anonymous"
+    )
     claimed_at = models.DateTimeField(auto_now_add=True)
-    details = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"RAK claimed by {self.claimant.username} on {self.claimed_at}"
+        return f"RAK claimed by {self.claimer.username} on {self.claimed_at}"
 
 
-class ClaimAction(models.Model):
-    rak_claim = models.ForeignKey(RAKClaim, on_delete=models.CASCADE, related_name='actions')
-    action_type = models.CharField(max_length=50)
-    description = models.TextField()
-    completed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    def mark_completed(self):
-        if self.completed:
-            raise ValueError("This action is already completed.")
-        self.completed = True
-        self.completed_at = timezone.now()
-        self.save()
-        
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    aura_points = models.PositiveIntegerField(default=0)
-    aura_level = models.CharField(max_length=255, default="Beginner")  # Add this field
-    aura_color = models.CharField(max_length=50, default="Blue")  # Add this field
-
-    def calculate_level(self):
-        aura_info = get_aura_level(self.aura_points)
-        self.aura_level = aura_info['main_level']
-        self.aura_color = aura_info['color']
-        self.save()
-
-
-class Badge(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+class Collaborators(models.Model):
+    collaborator = models.ForeignKey(User, on_delete=models.CASCADE)
+    rak = models.ForeignKey(
+        RandomActOfKindness, on_delete=models.CASCADE, related_name="collabs"
+    )
+    comment = models.TextField(max_length=255, help_text="Comment left by collaborator")
+    anonymous_collaborator = models.BooleanField(
+        default=False, help_text="Keep Collaborator anonymous"
+    )
+    started_collabing_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"RAK collaborated with {self.collaborator.username} on {self.started_collabing_at}"
 
 
 class Notification(models.Model):
-    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    recipient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="notifications"
+    )
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Notification for {self.recipient.username} - {self.message}"
+
+
+class PayItForward(models.Model):
+    original_rak = models.ForeignKey(
+        RandomActOfKindness, on_delete=models.CASCADE, related_name="pay_it_forwards"
+    )
+    new_rak = models.OneToOneField(
+        RandomActOfKindness,
+        on_delete=models.CASCADE,
+        related_name="pay_it_forward_instance",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def paid_forward_by(self):
+        return self.new_rak.created_by
+
+    def __str__(self):
+        return f"Pay It Forward by {self.paid_forward_by.username} for {self.original_rak.title}"

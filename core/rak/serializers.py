@@ -1,57 +1,149 @@
 from rest_framework import serializers
-from .models import RandomActOfKindness, RAKClaim, ClaimAction
+from .models import (
+    Collaborators,
+    RandomActOfKindness,
+    Claimant,
+    Notification,
+    PayItForward,
+)
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class CollaboratorsSerializer(serializers.ModelSerializer):
+    collaborator_username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Collaborators
+        fields = [
+            "id",
+            "collaborator",
+            "collaborator_username",
+            "rak",
+            "comment",
+            "anonymous_collaborator",
+            "started_collabing_at",
+        ]
+        extra_kwargs = {
+            "collaborator": {"read_only": True},
+            "rak": {"read_only": True},
+            "comment": {"required": True},
+        }
+
+    def get_collaborator_username(self, obj):
+        if obj.anonymous_collaborator:
+            return "Anon"
+        else:
+            return obj.collaborator.username
+
+
+class ClaimantSerializer(serializers.ModelSerializer):
+    claimer_username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Claimant
+        fields = [
+            "id",
+            "claimer",
+            "claimer_username",
+            "rak",
+            "comment",
+            "anonymous_claimant",
+            "claimed_at",
+        ]
+        extra_kwargs = {
+            "claimer": {"read_only": True},
+            "rak": {"read_only": True},
+            "comment": {"required": True},
+        }
+
+    def get_claimer_username(self, obj):
+        if obj.anonymous_claimant:
+            return "Anon"
+        else:
+            return obj.claimer.username
+
 
 class RandomActOfKindnessSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.id')  # Owner field is read-only
+    created_by_username = serializers.CharField(
+        source="created_by.username", read_only=True
+    )
+    claims = ClaimantSerializer(many=True, read_only=True)
+    collabs = CollaboratorsSerializer(many=True, read_only=True)
+    is_paid_forward = serializers.SerializerMethodField()
 
     class Meta:
         model = RandomActOfKindness
-        fields = ['id', 'description', 'media', 'created_at', 'owner', 'status', 'visibility', 'post_type', 'aura_points', 'completed_at']
+        fields = [
+            "id",
+            "created_by",
+            "created_by_username",
+            "title",
+            "description",
+            "media",
+            "created_at",
+            "status",
+            "private",
+            "rak_type",
+            "action",
+            "aura_points_value",
+            "completed_at",
+            "anonymous_rak",
+            "allow_collaborators",
+            "allow_claimants",
+            "claims",
+            "collabs",
+            "is_paid_forward",
+        ]
+        extra_kwargs = {
+            "created_by": {"read_only": True},
+            "status": {"read_only": True},
+            "completed_at": {"read_only": True},
+        }
 
-    def update(self, instance, validated_data):
-        instance.description = validated_data.get('description', instance.description)
-        instance.media = validated_data.get('media', instance.media)
-        instance.status = validated_data.get('status', instance.status)
-        instance.visibility = validated_data.get('visibility', instance.visibility)
-        instance.post_type = validated_data.get('post_type', instance.post_type)
-        instance.aura_points = validated_data.get('aura_points', instance.aura_points)
-        instance.completed_at = validated_data.get('completed_at', instance.completed_at)
-        instance.save()
-        return instance
-    
-class RAKClaimSerializer(serializers.ModelSerializer):
-    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
-    rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
+    def get_is_paid_forward(self, obj):
+        return obj.is_paid_forward
 
-    class Meta:
-        model = RAKClaim
-        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
 
-    def update(self, instance, validated_data):
-        # Update fields in the RAKClaim instance
-        instance.details = validated_data.get('details', instance.details)
-        instance.save()
-        return instance
-
-class RAKClaimListSerializer(serializers.ModelSerializer):
-    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
-    rak = serializers.PrimaryKeyRelatedField(queryset=RandomActOfKindness.objects.all())  # Add rak field here
-
-    class Meta:
-        model = RAKClaim
-        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
-
-class RAKClaimDetailSerializer(serializers.ModelSerializer):
-    claimant = serializers.ReadOnlyField(source='claimant.username')  # Read-only claimant
-    rak = serializers.ReadOnlyField(source='rak.id')  # Read-only RAK post ID
+class NotificationSerializer(serializers.ModelSerializer):
+    recipient_username = serializers.CharField(
+        source="recipient.username", read_only=True
+    )
 
     class Meta:
-        model = RAKClaim
-        fields = ['id', 'rak', 'claimant', 'claimed_at', 'details']
+        model = Notification
+        fields = [
+            "id",
+            "recipient",
+            "recipient_username",
+            "message",
+            "created_at",
+            "is_read",
+        ]
+        extra_kwargs = {
+            "recipient": {"read_only": True},
+            "created_at": {"read_only": True},
+            "is_read": {"read_only": True},
+        }
 
-class ClaimActionSerializer(serializers.ModelSerializer):
-    rak_claim = serializers.PrimaryKeyRelatedField(queryset=RAKClaim.objects.all())
+
+class PayItForwardSerializer(serializers.ModelSerializer):
+    original_rak = RandomActOfKindnessSerializer(read_only=True)
+    new_rak = RandomActOfKindnessSerializer(read_only=True)
+    paid_forward_by_username = serializers.CharField(
+        source="paid_forward_by.username", read_only=True
+    )
 
     class Meta:
-        model = ClaimAction
-        fields = ['id', 'rak_claim', 'action_type', 'description', 'completed', 'created_at', 'completed_at']
+        model = PayItForward
+        fields = [
+            "id",
+            "original_rak",
+            "new_rak",
+            "created_at",
+            "paid_forward_by_username",
+        ]
+        extra_kwargs = {
+            "created_at": {"read_only": True},
+        }

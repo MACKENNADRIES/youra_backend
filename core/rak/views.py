@@ -1,249 +1,812 @@
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.db.models import F, Q, Count
 from rest_framework.views import APIView
+from rest_framework import permissions, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
-from rest_framework import status
-from django.http import Http404
-from datetime import timezone
-from .models import RandomActOfKindness, RAKClaim, ClaimAction, UserProfile
-from .serializers import RandomActOfKindnessSerializer, RAKClaimSerializer, ClaimActionSerializer, RAKClaimListSerializer
-from .permissions import IsOwnerOrReadOnly, IsClaimantOrReadOnly
-# View for listing and creating RAKClaim instances
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
-# View for listing and creating RandomActOfKindness instances
-class RandomActOfKindnessList(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    
-    def get(self, request):
-        rak_posts = RandomActOfKindness.objects.all()
-        serializer = RandomActOfKindnessSerializer(rak_posts, many=True)
-        return Response(serializer.data)
+from .models import (
+    RandomActOfKindness,
+    Claimant,
+    Collaborators,
+    Notification,
+    PayItForward,
+)
+from rak.serializers import (
+    RandomActOfKindnessSerializer,
+    ClaimantSerializer,
+    CollaboratorsSerializer,
+    NotificationSerializer,
+    PayItForwardSerializer,
+)
+from users.models import UserProfile
+from users.serializers import UserProfileSerializer, CustomUserSerializer
+
+User = get_user_model()
+
+
+# 1. Create a RAK post (offer or request)
+class RandomActOfKindnessCreateView(APIView):
+    """
+    Create a new Random Act of Kindness (RAK) post.
+
+    **Endpoint:** `/rak/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **Request Body:**
+    - `title`: String, required.
+    - `description`: String, required.
+    - `media`: File, optional.
+    - `private`: Boolean, optional.
+    - `rak_type`: String, choices are defined in `POST_TYPE_CHOICES`.
+    - `action`: String, required.
+    - `aura_points_value`: Integer, optional.
+    - `anonymous_rak`: Boolean, optional.
+    - `allow_collaborators`: Boolean, optional.
+    - `allow_claimants`: Boolean, optional.
+
+    **Functionality:**
+    - Creates a RAK post (offer or request).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-            serializer = RandomActOfKindnessSerializer(data=request.data)
-            if serializer.is_valid():
-                # Set both creator and owner to the authenticated user
-                serializer.save(creator=request.user, owner=request.user)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer = RandomActOfKindnessSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(created_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# 2. Update a RAK post (edit an existing post)
+class RandomActOfKindnessUpdateView(APIView):
+    """
+    Retrieve or update an existing RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/`
+
+    **Methods:**
+    - `GET`: Retrieve RAK details.
+    - `PUT`: Update RAK details.
+    - `PATCH`: Partially update RAK details.
+    - `DELETE`: Delete the RAK post.
+
+    **Permissions:** Authenticated users only. Only the creator can update or delete.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Update a RAK post (edit an existing post).
+    - Delete a RAK post.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk):
+        return get_object_or_404(RandomActOfKindness, pk=pk)
+
+    def get(self, request, pk):
+        rak = self.get_object(pk)
+        serializer = RandomActOfKindnessSerializer(rak)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        rak = self.get_object(pk)
+        if rak.created_by != request.user:
+            raise PermissionDenied("You cannot edit this RAK.")
+        serializer = RandomActOfKindnessSerializer(rak, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        rak = self.get_object(pk)
+        if rak.created_by != request.user:
+            raise PermissionDenied("You cannot edit this RAK.")
+        serializer = RandomActOfKindnessSerializer(rak, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        rak = self.get_object(pk)
+        if rak.created_by != request.user:
+            return Response(
+                {"detail": "You cannot delete this RAK."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        rak.delete()
+        return Response({"detail": "RAK deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+
+# 3. View all unclaimed RAK posts
+class UnclaimedRAKListView(APIView):
+    """
+    List all unclaimed and public RAK posts.
+
+    **Endpoint:** `/rak/unclaimed/`
+
+    **Method:** `GET`
+
+    **Permissions:** Allow any user.
+
+    **Functionality:**
+    - View all unclaimed RAK posts.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        raks = RandomActOfKindness.objects.filter(status="open", private=False)
+        serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data)
+
+
+# New: View all claimed RAK posts
+class ClaimedRAKListView(APIView):
+    """
+    List all claimed and public RAK posts.
+
+    **Endpoint:** `/rak/claimed/`
+
+    **Method:** `GET`
+
+    **Permissions:** Allow any user.
+
+    **Functionality:**
+    - View all claimed RAK posts.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        raks = RandomActOfKindness.objects.filter(
+            status="in progress", private=False, claims__isnull=False
+        ).distinct()
+        serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data)
+
+
+# 4. Claim a RAK post – automatically update to 'in progress.'
+class RAKClaimView(APIView):
+    """
+    Claim a RAK post, automatically updating its status to 'in progress.'
+
+    **Endpoint:** `/rak/<int:pk>/claim/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post to claim.
+
+    **Request Body:**
+    - `anonymous_claimant`: Boolean, optional.
+    - `comment`: String, optional.
+
+    **Functionality:**
+    - Claim a RAK post – automatically updates to 'in progress.'
+    - Allow users to claim RAKs anonymously.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        anonymous = request.data.get("anonymous_claimant", False)
+        comment = request.data.get("comment", "")
+        try:
+            rak.claim_rak(request.user, comment=comment, anonymous_claimant=anonymous)
+            return Response(
+                {"detail": "RAK claimed successfully."}, status=status.HTTP_200_OK
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# New: Collaborate on a RAK post
+class RAKCollaborateView(APIView):
+    """
+    Collaborate on a RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/collaborate/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post to collaborate on.
+
+    **Request Body:**
+    - `anonymous_collaborator`: Boolean, optional.
+    - `comment`: String, optional.
+
+    **Functionality:**
+    - Collaborate on a RAK post.
+    - Allow users to collaborate on RAKs anonymously.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        anonymous = request.data.get("anonymous_collaborator", False)
+        comment = request.data.get("comment", "")
+        try:
+            rak.collaborate(
+                request.user, comment=comment, anonymous_collaborator=anonymous
+            )
+            return Response(
+                {"detail": "Collaboration started successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# 5. Enable collaborators on a RAK
+class EnableCollaboratorsView(APIView):
+    """
+    Enable collaborators on a RAK post, allowing multiple collaborators.
+
+    **Endpoint:** `/rak/<int:pk>/enable-collaborators/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only. Only the creator can enable collaborators.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Enable collaboration on a RAK post.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        if rak.created_by != request.user:
+            return Response(
+                {"detail": "You cannot modify this RAK."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        rak.enable_collaborators()
+        return Response(
+            {"detail": "Collaborators enabled for this RAK."}, status=status.HTTP_200_OK
+        )
+
+
+# 6. Change the status of a RAK post
+class RAKStatusUpdateView(APIView):
+    """
+    Update the status of a RAK post.
+
+    **Endpoint:** `/rak/<int:pk>/status/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only. Only the creator can change the status.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Request Body:**
+    - `status`: String, required. Must be one of ['open', 'in progress', 'completed'].
+
+    **Functionality:**
+    - Change the status of a RAK post.
+    - Award aura points to the claimant(s) and collaborators once the RAK is completed.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        if rak.created_by != request.user:
+            return Response(
+                {"detail": "You cannot change the status of this RAK."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        new_status = request.data.get("status")
+        if new_status not in ["open", "in progress", "completed"]:
+            return Response(
+                {"detail": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if new_status == "completed":
+            rak.complete_rak()
+        else:
+            rak.status = new_status
+            rak.save()
+        return Response({"detail": "RAK status updated."}, status=status.HTTP_200_OK)
+
+
+# 9. Create Pay It Forward
+class CreatePayItForwardView(APIView):
+    """
+    Create a Pay It Forward, generating a new RAK post linked to an original RAK.
+
+    **Endpoint:** `/rak/<int:pk>/pay-it-forward/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the original completed RAK post.
+
+    **Request Body:**
+    - Fields required to create a new RAK post.
+
+    **Functionality:**
+    - Once a RAK is completed, if the Pay It Forward feature is enabled, forwards are displayed in the feed.
+    - Pay It Forward can be claimed and turns into a new RAK post.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        original_rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        if original_rak.status != "completed":
+            return Response(
+                {"detail": "RAK must be completed to pay it forward."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Create a new RAK
+        data = request.data.copy()
+        serializer = RandomActOfKindnessSerializer(data=data)
+        if serializer.is_valid():
+            new_rak = serializer.save(created_by=request.user)
+            # Create PayItForward instance
+            PayItForward.objects.create(original_rak=original_rak, new_rak=new_rak)
+            return Response(
+                {"detail": "Pay It Forward created.", "new_rak_id": new_rak.id},
+                status=status.HTTP_201_CREATED,
+            )
+        else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# View for retrieving, updating, or deleting a specific RandomActOfKindness instance
-class RandomActOfKindnessDetail(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-
-    def get_object(self, pk):
-        try:
-            rak_post = RandomActOfKindness.objects.get(pk=pk)
-            self.check_object_permissions(self.request, rak_post)  # Check custom permissions
-            return rak_post
-        except RandomActOfKindness.DoesNotExist:
-            raise Http404
-
-    def get(self, request, pk):
-        rak_post = self.get_object(pk)
-        serializer = RandomActOfKindnessSerializer(rak_post)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        rak_post = self.get_object(pk)
-        serializer = RandomActOfKindnessSerializer(
-            instance=rak_post,
-            data=request.data,
-            partial=True  # Allow partial updates
-        )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        rak_post = self.get_object(pk)
-        rak_post.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+# Additional functionalities:
 
 
+# Fetch all RAK claims
+class AllClaimsView(APIView):
+    """
+    List all RAK claims.
 
+    **Endpoint:** `/claims/`
 
-class RAKClaimList(APIView):
-    # Require users to be authenticated to interact with this view
-    permission_classes = [IsAuthenticated]  # This ensures only authenticated users can access this
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Fetch all RAK claims.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        claimed_raks = RAKClaim.objects.all()
-        serializer = RAKClaimListSerializer(claimed_raks, many=True)
+        claims = Claimant.objects.all()
+        serializer = ClaimantSerializer(claims, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = RAKClaimListSerializer(data=request.data)
-        if serializer.is_valid():
-            rak = serializer.validated_data['rak']
-            
-            # Prevent the owner from claiming their own RAK
-            if rak.creator == request.user:
-                return Response({"error": "You cannot claim your own RAK."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Save the claim with the current user as the claimant
-            claimed_rak = serializer.save(claimant=request.user)
-            # Update the RandomActOfKindness status to 'claimed'
-            claimed_rak.rak.status = 'claimed'
-            claimed_rak.rak.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# Fetch all claimants for a RAK
+class RAKClaimantsView(APIView):
+    """
+    List all claimants for a specific RAK.
 
+    **Endpoint:** `/rak/<int:pk>/claimants/`
 
-# View for retrieving, updating, or deleting a specific RAKClaim instance
-class RAKClaimDetail(APIView):
-    permission_classes = [IsClaimantOrReadOnly]
+    **Method:** `GET`
 
-    def get_object(self, pk):
-        return get_object_or_404(RAKClaim, pk=pk)
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Fetch all claimants.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        serializer = RAKClaimSerializer(claimed_rak)
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        claimants = rak.claims.all()
+        serializer = ClaimantSerializer(claimants, many=True)
         return Response(serializer.data)
 
-    def put(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        serializer = RAKClaimSerializer(claimed_rak, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
-        claimed_rak = self.get_object(pk)
-        claimed_rak.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+# New: Fetch all collaborators for a RAK
+class RAKCollaboratorsView(APIView):
+    """
+    List all collaborators for a specific RAK.
+
+    **Endpoint:** `/rak/<int:pk>/collaborators/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the RAK post.
+
+    **Functionality:**
+    - Fetch all collaborators.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        rak = get_object_or_404(RandomActOfKindness, pk=pk)
+        collaborators = rak.collabs.all()
+        serializer = CollaboratorsSerializer(collaborators, many=True)
+        return Response(serializer.data)
 
 
-# View for listing and creating ClaimAction instances
-class ClaimActionList(APIView):
+# Fetch user details
+class UserDetailView(APIView):
+    """
+    Retrieve user details.
+
+    **Endpoint:** `/users/<int:pk>/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Fetch user details.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        serializer = CustomUserSerializer(user)
+        return Response(serializer.data)
+
+
+# Display a user’s aura points and percentages towards levels
+class UserAuraPointsView(APIView):
+    """
+    Display a user's aura points and percentage towards the next level.
+
+    **Endpoint:** `/users/<int:pk>/aura-points/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Display a user’s aura points and percentages towards levels.
+    - Display how a user’s aura points are calculated.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        profile = user.userprofile
+        data = {
+            "aura_points": profile.aura_points,
+            "level": profile.level,
+            "percentage_to_next_level": profile.percentage_to_next_level(),
+        }
+        return Response(data)
+
+
+# Display a leaderboard of users based on aura points
+class AuraPointsLeaderboardView(APIView):
+    """
+    Display a leaderboard of users based on aura points.
+
+    **Endpoint:** `/leaderboard/`
+
+    **Method:** `GET`
+
+    **Permissions:** Allow any user.
+
+    **Functionality:**
+    - Display a leaderboard of users based on aura points.
+    - Assign colors to different aura levels (handled in serializers or frontend).
+    - Award badges based on aura levels, displayed on the profile.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
     def get(self, request):
-        claim_actions = ClaimAction.objects.all()
-        serializer = ClaimActionSerializer(claim_actions, many=True)
+        user_profiles = UserProfile.objects.order_by("-aura_points")[:10]
+        serializer = UserProfileSerializer(user_profiles, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = ClaimActionSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# Follow a user
+class FollowUserView(APIView):
+    """
+    Follow a user.
 
-# View for handling claims on Random Acts of Kindness
-class ClaimRAKView(APIView):
-    def post(self, request, rak_id):
-        print("hi")
-        try:
-            rak = RandomActOfKindness.objects.get(id=rak_id)
-            # Call the claim_rak method which includes the logic to check if it's still open
-            rak.claim_rak(request.user)
-            return Response({"message": "RAK claimed successfully."}, status=status.HTTP_200_OK)
-        except RandomActOfKindness.DoesNotExist:
-            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+    **Endpoint:** `/users/<int:pk>/follow/`
 
-class CompleteRAKView(APIView):
-    def post(self, request, rak_id):
-        try:
-            rak = RandomActOfKindness.objects.get(id=rak_id)
-            # Call the claim_rak method which includes the logic to check if it's still open
-            rak.complete_rak()
-            return Response({"message": "RAK completed successfully."}, status=status.HTTP_200_OK)
-        except RandomActOfKindness.DoesNotExist:
-            return Response({"error": "RAK not found."}, status=status.HTTP_404_NOT_FOUND)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    **Method:** `POST`
 
+    **Permissions:** Authenticated users only.
 
-class PayItForwardView(APIView):
-    permission_classes = [IsAuthenticated]  # Only allow authenticated users
+    **URL Parameters:**
+    - `pk`: ID of the user to follow.
+
+    **Functionality:**
+    - Follow users.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        original_rak = RandomActOfKindness.objects.get(pk=pk)
-
-        try:
-            # Try to get the claim associated with the RAK
-            rak_claim = RAKClaim.objects.get(rak=original_rak)
-            
-            # Log details for debugging
-            print(f"Claimant: {rak_claim.claimant}, Requesting User: {request.user}")
-
-            # Check if the requesting user is the claimant
-            if rak_claim.claimant != request.user:
-                return Response({"error": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
-        except RAKClaim.DoesNotExist:
-            return Response({"error": "This RAK has not been claimed yet."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Proceed only if the original RAK is completed
-        if original_rak.completed_at:
-            new_rak = RandomActOfKindness(
-                creator=request.user,  # The person who pays it forward becomes the new creator
-                description=request.data.get('description'),
-                is_paid_forward=True
+        target_user = get_object_or_404(User, pk=pk)
+        if target_user == request.user:
+            return Response(
+                {"detail": "You cannot follow yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            new_rak.save()
-            original_rak.pay_it_forward()  # Mark the original RAK as paid forward
-            return Response({'status': 'Pay It Forward created successfully'}, status=status.HTTP_201_CREATED)
-        return Response({'error': 'Original RAK is not completed.'}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.userprofile.following.add(target_user.userprofile)
+        return Response({"detail": "User followed."}, status=status.HTTP_200_OK)
 
-class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+
+# Unfollow a user
+class UnfollowUserView(APIView):
+    """
+    Unfollow a user.
+
+    **Endpoint:** `/users/<int:pk>/unfollow/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to unfollow.
+
+    **Functionality:**
+    - Unfollow users.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        request.user.userprofile.following.remove(target_user.userprofile)
+        return Response({"detail": "User unfollowed."}, status=status.HTTP_200_OK)
+
+
+# Block users
+class BlockUserView(APIView):
+    """
+    Block a user.
+
+    **Endpoint:** `/users/<int:pk>/block/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to block.
+
+    **Functionality:**
+    - Block users.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        if target_user == request.user:
+            return Response(
+                {"detail": "You cannot block yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.userprofile.blocked_users.add(target_user.userprofile)
+        return Response({"detail": "User blocked."}, status=status.HTTP_200_OK)
+
+
+# Report users
+class ReportUserView(APIView):
+    """
+    Report a user for inappropriate behavior.
+
+    **Endpoint:** `/users/<int:pk>/report/`
+
+    **Method:** `POST`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user to report.
+
+    **Functionality:**
+    - Report users.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        # Implement reporting logic here, e.g., create a Report model instance
+        return Response({"detail": "User reported."}, status=status.HTTP_200_OK)
+
+
+# Display a curated feed of followed users
+class UserFeedView(APIView):
+    """
+    Display a curated feed of RAKs from users the current user follows.
+
+    **Endpoint:** `/feed/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Display a curated feed of followed users.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        user_profile = UserProfile.objects.get(user=request.user)
+        user = request.user
+        following_users = user.userprofile.following.values_list("user", flat=True)
+        raks = RandomActOfKindness.objects.filter(
+            created_by__in=following_users
+        ).exclude(private=True)
+        serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data)
+
+
+# Explore page: View RAKs from people I don't follow
+class ExploreRAKView(APIView):
+    """
+    Display RAKs from users the current user does not follow.
+
+    **Endpoint:** `/explore/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - View an explore page with RAKs from people the user doesn’t follow.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        following_users = user.userprofile.following.values_list("user", flat=True)
+        raks = (
+            RandomActOfKindness.objects.exclude(created_by__in=following_users)
+            .exclude(created_by=user)
+            .exclude(private=True)
+        )
+        serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data)
+
+
+# Display how a user’s aura points are calculated
+class UserAuraPointsDetailsView(APIView):
+    """
+    Display details on how a user's aura points are calculated.
+
+    **Endpoint:** `/users/<int:pk>/aura-points-details/`
+
+    **Method:** `GET`
+
+    **Permissions:** Authenticated users only.
+
+    **URL Parameters:**
+    - `pk`: ID of the user.
+
+    **Functionality:**
+    - Display how a user’s aura points are calculated (RAKs, Pay It Forwards, etc.).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        profile = user.userprofile
         data = {
-            "username": request.user.username,  # Include username
-            "email": request.user.email,        # Optional: Include email if needed
-            "aura_points": user_profile.aura_points,
-            "aura_level": user_profile.aura_level,
-            "aura_color": user_profile.aura_color
+            "aura_points": profile.aura_points,
+            "from_raks": profile.aura_points_from_raks(),
+            "from_pay_it_forward": profile.aura_points_from_pay_it_forward(),
+            # Add other sources if necessary
         }
-        return Response(data, status=200)
-    
-class UserProfileListView(APIView):
-    permission_classes = [IsAdminUser]
+        return Response(data)
+
+
+# Add profile details: profile picture, bio, etc.
+class UserProfileUpdateView(APIView):
+    """
+    Retrieve or update the user's profile details.
+
+    **Endpoint:** `/user/profile/`
+
+    **Methods:**
+    - `GET`: Retrieve profile details.
+    - `PUT`: Update profile details.
+    - `PATCH`: Partially update profile details.
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Add profile details: profile picture, bio, etc.
+    - Allow users to create and manage posts (handled elsewhere).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        profiles = UserProfile.objects.all()
-        data = [
-            {
-                "username": profile.user.username,
-                "email": profile.user.email,
-                "aura_points": profile.aura_points,
-                "aura_level": profile.aura_level,
-                "aura_color": profile.aura_color
-            }
-            for profile in profiles
-        ]
-        return Response(data, status=200)
+        profile = request.user.userprofile
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data)
 
-# class UpdateRAKStatusView(APIView):
-#     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Only allow authenticated users and apply the permissions
+    def put(self, request):
+        profile = request.user.userprofile
+        serializer = UserProfileSerializer(profile, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-#     def patch(self, request, pk):
-#         # Retrieve the RAK object using the primary key (pk)
-#         rak = get_object_or_404(RandomActOfKindness, pk=pk)
+    def patch(self, request):
+        profile = request.user.userprofile
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-#         # Check if the user has permission to change the status
-#         self.check_object_permissions(request, rak)
 
-#         # Extract the new status from the request data
-#         new_status = request.data.get('status')
-        
-#         if new_status:
-#             # Update the status of the RAK
-#             try:
-#                 rak.update_status(new_status)
-#                 return Response({"message": "Status updated successfully"}, status=status.HTTP_200_OK)
-#             except ValueError as e:
-#                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-#         return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
+# Delete a user
+class UserDeleteView(APIView):
+    """
+    Deactivate the user's account.
+
+    **Endpoint:** `/user/delete/`
+
+    **Method:** `DELETE`
+
+    **Permissions:** Authenticated users only.
+
+    **Functionality:**
+    - Delete a user (deactivate account).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.is_active = False
+        user.save()
+        return Response(
+            {"detail": "User account deactivated."}, status=status.HTTP_204_NO_CONTENT
+        )
