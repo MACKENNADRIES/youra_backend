@@ -115,10 +115,9 @@ class RandomActOfKindness(models.Model):
         # Award aura points to all claimants
         for claim in self.claims.all():
             claimant_profile = claim.claimer.userprofile
-            aura_points_for_claimant = self.aura_points_value
-            claimant_profile.aura_points += aura_points_for_claimant
-            claimant_profile.calculate_level()  # Update aura level if necessary
+            claimant_profile.aura_points += self.aura_points_value
             claimant_profile.save()
+            claimant_profile.calculate_level()  # Update aura level if necessary
 
     def send_notification(self, message):
         Notification.objects.create(recipient=self.created_by, message=message)

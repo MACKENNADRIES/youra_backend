@@ -1,3 +1,5 @@
+# signals.py
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
@@ -11,42 +13,31 @@ User = get_user_model()
 def handle_rak_post_save(sender, instance, created, **kwargs):
     # Only award aura points if the RAK is completed and it's not a Pay It Forward action
     if instance.completed_at and not instance.is_paid_forward:
-        # Case 1: RAK is an offer, award points to the creator
-        if instance.post_type == "offer":
-            user_profile = instance.creator.userprofile
+        # Case 1: RAK is an offer, award points to the created_by
+        if instance.rak_type == "offer":
+            user_profile = instance.created_by.userprofile
             user_profile.aura_points += (
                 instance.aura_points
-            )  # Add aura points to the creator
+            )  # Add aura points to the created_by
             user_profile.points_from_offers += (
                 instance.aura_points
             )  # Track points from offers
-            user_profile.calculate_level()
             user_profile.save()
 
         # Case 2: RAK is a request, no points for the owner, claimant gets points
-        elif (
-            instance.post_type == "request"
-            and instance.status == "completed"
-            and hasattr(instance, "rak_claim")
-        ):
-            claimant_profile = instance.rak_claim.claimant.userprofile
-            aura_points_for_claimant = instance.aura_points
-            claimant_profile.aura_points += (
-                aura_points_for_claimant  # Give full points to the claimant
-            )
-            claimant_profile.points_from_claiming += (
-                aura_points_for_claimant  # Track points from claiming
-            )
-            claimant_profile.calculate_level()
-            claimant_profile.save()
+        elif instance.rak_type == "request" and instance.status == "completed":
+            for claim in instance.claims.all():
+                claimant_profile = claim.claimer.userprofile
+                claimant_profile.points_from_claiming += instance.aura_points_value
+                claimant_profile.save()
 
     # Case 3: If Pay It Forward is completed, award points to the original RAK owner (requester)
     if (
         instance.is_paid_forward
         and instance.status == "completed"
-        and instance.post_type == "request"
+        and instance.rak_type == "request"
     ):
-        original_rak_owner_profile = instance.creator.userprofile
+        original_rak_owner_profile = instance.created_by.userprofile
         aura_points_for_owner = (
             instance.aura_points
         )  # The original requester now gets the points
@@ -54,18 +45,18 @@ def handle_rak_post_save(sender, instance, created, **kwargs):
         original_rak_owner_profile.points_from_pay_it_forward += (
             aura_points_for_owner  # Track points from Pay It Forward
         )
-        original_rak_owner_profile.calculate_level()
         original_rak_owner_profile.save()
 
     # Handle notifications
     if instance.status == "claimed":
-        Notification.objects.create(
-            recipient=instance.creator,
-            message=f"Your Random Act of Kindness has been claimed by {instance.rak_claim.claimant.username}.",
-        )
+        for claim in instance.claims.all():
+            Notification.objects.create(
+                recipient=instance.created_by,
+                message=f"Your Random Act of Kindness has been claimed by {claim.claimer.username}.",
+            )
     if instance.completed_at:
         Notification.objects.create(
-            recipient=instance.creator,
+            recipient=instance.created_by,
             message=f"Your Random Act of Kindness has been completed.",
         )
 
@@ -75,7 +66,5 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
     else:
-        try:
-            instance.userprofile.save()
-        except UserProfile.DoesNotExist:
-            UserProfile.objects.create(user=instance)
+        # Ensure the UserProfile exists
+        UserProfile.objects.get_or_create(user=instance)

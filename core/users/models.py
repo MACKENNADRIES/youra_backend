@@ -4,6 +4,7 @@ from users.utils import (
     get_aura_level,
 )  # Ensure this utility function is in users/utils.py
 from django.conf import settings
+from simple_history.models import HistoricalRecords
 
 
 class CustomUser(AbstractUser):
@@ -20,6 +21,7 @@ class UserProfile(models.Model):
     points_from_claiming = models.IntegerField(default=0)
     points_from_pay_it_forward = models.IntegerField(default=0)
     points_from_offers = models.IntegerField(default=0)
+    history = HistoricalRecords()
 
     def calculate_level(self):
         aura_info = get_aura_level(self.aura_points)
