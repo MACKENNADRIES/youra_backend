@@ -2,10 +2,15 @@
 
 Mackenna Dries 
 
+## ATTENTION:
+Ok. SO i know this is a little ambitious... But i have big hopes and dreams and a lack of knowledge won't hold me back.
+
+Some extra features are not fully functional at the moment, and i know that some of the logic is a little bit funky in certain spots... I think I will be able to clear things up when I work on the front end and can see how it's all working .... at least that is the plan 
+
 ## Planning:
 
 ### Concept/Name
-**YOURA** is a platform designed to inspire and promote positivity through Random Acts of Kindness (RAKs). Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
+**YOURA** is a platform designed to inspire and promote positivity through Random Acts of Kindness (RAKs), where users can grow their aura by recieiving aura points. Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
 
 The app integrates social media features, allowing users to follow others, share posts, upload media, and comment on acts of kindness. It encourages users to pay it forward after receiving a RAK, ensuring that kindness spreads throughout the community. With a focus on positive interactions, users can take part in kindness challenges, earn achievements, and build an inspiring feed of their contributions.
 
@@ -49,7 +54,7 @@ The app fosters a supportive environment where users can track their impact, con
   - each claim has a column that is either true or false - getting details without the username
   - ammount ? price ? 
   - when deleting - set user to inactive rather than deleting - field is active - True 
-  - logic for delete (images can be deleted not users ?)
+  - logic for delete (images can be deleted not users ????)
   - deploy before saturday
   - storing points as queries 
   - how points were acquired? - do i want to include this --- YES --- points associated with categories, you have earnt this doing raks, your have earnt this from paying it forward --- DONE 
@@ -74,7 +79,7 @@ The app fosters a supportive environment where users can track their impact, con
   - develop feed and explore (wander) page
   - implemet align with this feature (like)
   - TEST POINTS AFTER ANONYMOUS CLAIM 
-  - Why when retrieving is it not anonymous 
+  - Why when retrieving is it not anonymous ?????
 ### Design Ideas
 - **The Look and Feel**
   - ethereal look and feel - stardust, glowing auras 
@@ -268,11 +273,11 @@ Your crowdfunding project must:
   - [x] An amount, or action
   - [x] The rak_id the claim is for
   - [x] The supporter/user (i.e. who created the pledge)
-  - [ ] Whether the claim is anonymous or not - kind of????
+  - [x] Whether the claim is anonymous or not - kind of????
   - [x] A comment to go along with the claim
 - [x] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
 - [x] Implement suitable permissions, e.g. who is allowed to delete a pledge?
 - [x] Return the relevant status codes for both successful and unsuccessful requests to the API.
-- [ ] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
+- [x] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
 - [x] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
 - [ ] Implement responsive design.

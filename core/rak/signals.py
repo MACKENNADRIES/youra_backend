@@ -1,4 +1,4 @@
-# signals.py
+# This is for 'events' where i want something to happen. Like event listener kind of..... use this for point logic? 
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -11,27 +11,28 @@ User = get_user_model()
 
 @receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
-    # Only award aura points if the RAK is completed and it's not a Pay It Forward action
+    # I only want to award aura points if the RAK is completed and it's not a Pay It Forward action 
+    # --- Logic here could be a bit flawed ....CHECK ME 
     if instance.completed_at and not instance.is_paid_forward:
-        # Case 1: RAK is an offer, award points to the created_by
+        # INSTANCE 1 ---  RAK is an offer, award points via the created_by
         if instance.rak_type == "offer":
             user_profile = instance.created_by.userprofile
             user_profile.aura_points += (
                 instance.aura_points
-            )  # Add aura points to the created_by
+            )  # Add aura points to created_by user
             user_profile.points_from_offers += (
                 instance.aura_points
             )  # Track points from offers
             user_profile.save()
 
-        # Case 2: RAK is a request, no points for the owner, claimant gets points
+        # INSTANCE 2 --- RAK is a request, no points for the owner, claimant gets points!!!!
         elif instance.rak_type == "request" and instance.status == "completed":
             for claim in instance.claims.all():
                 claimant_profile = claim.claimer.userprofile
                 claimant_profile.points_from_claiming += instance.aura_points_value
                 claimant_profile.save()
 
-    # Case 3: If Pay It Forward is completed, award points to the original RAK owner (requester)
+    # INSTANCE 3 --- If Pay It Forward is completed, award points to the original RAK owner (requester)
     if (
         instance.is_paid_forward
         and instance.status == "completed"
