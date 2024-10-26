@@ -174,11 +174,11 @@ Your crowdfunding project must:
 
 ### Insomnia requests
 
-![](../insmonia/CreateUser.png)
+![](../insomnia/CreateUser.png)
 ![](../insomnia/DeleteRAKPost.png)
-![](../insmonia/GetUserProfile.png)
+![](../insomnia/GetUserProfile.png)
 ![](../insomnia/IncorrectLoginDetails.png)
-![](../insmonia/TokenAuthentication.png)
+![](../insomnia/TokenAuthentication.png)
 ![](../insomnia/UpdateRAKPost.png)
 
 ## Must-Have Features:
