@@ -172,6 +172,15 @@ Your crowdfunding project must:
 ### DB Schema
 ![](core/class.png)
 
+### Insomnia requests
+
+![](insmonia/CreateUser.png)
+![](insomnia/DeleteRAKPost.png)
+![](insmonia/GetUserProfile.png)
+![](insomnia/IncorrectLoginDetails.png)
+![](insmonia/TokenAuthentication.png)
+![](insomnia/UpdateRAKPost.png)
+
 ## Must-Have Features:
 
 ### User Authentication and Profiles:
