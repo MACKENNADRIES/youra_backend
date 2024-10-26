@@ -6,7 +6,7 @@ from rak.choices import POST_TYPE_CHOICES, STATUS_CHOICES
 
 User = get_user_model()
 
-
+# This model is for everything RAK related........ is meant to be 
 class RandomActOfKindness(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.TextField(max_length=30)
@@ -26,9 +26,11 @@ class RandomActOfKindness(models.Model):
     anonymous_rak = models.BooleanField(
         default=False, help_text="Keep created by anonymous"
     )
+    # collaborators are people who are joining together to offer or request a rak 
     allow_collaborators = models.BooleanField(
         default=False, help_text="Allow multiple collaborators "
     )
+    # claimants are users who are joining together to claim a rak
     allow_claimants = models.BooleanField(
         default=False, help_text="Allow multiple claimants"
     )
@@ -56,7 +58,7 @@ class RandomActOfKindness(models.Model):
         if self.created_by == user:
             raise ValueError("You cannot claim your own RAK.")
 
-        # Check if the user has already claimed this RAK
+        # Logic for if the user has already claimed a RAK - don't allow it 
         existing_claim = self.claims.filter(claimer=user).exists()
         if existing_claim:
             raise ValueError("You have already claimed this RAK.")
@@ -85,7 +87,7 @@ class RandomActOfKindness(models.Model):
         if self.created_by == user:
             raise ValueError("You cannot collaborate on your own RAK.")
 
-        # Check if the user has already collaborated on this RAK
+        # Check if particular user has already collaborated on this RAK
         if self.collabs.filter(collaborator=user).exists():
             raise ValueError("You have already collaborated on this RAK.")
 
@@ -182,3 +184,13 @@ class PayItForward(models.Model):
 
     def __str__(self):
         return f"Pay It Forward by {self.paid_forward_by.username} for {self.original_rak.title}"
+
+# this is a 'like' rak post feature lol 
+class Align(models.Model):
+    user = models.ForeignKey(User)
+    rak = models.ForeignKey(
+        RandomActOfKindness, on_delete=models.CASCADE, related_name="collabs"
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    aligns = rak.objects.get(...)
+    number_of_aligns = aligns.like_set

@@ -27,7 +27,7 @@ from users.serializers import UserProfileSerializer, CustomUserSerializer
 User = get_user_model()
 
 
-# 1. Create a RAK post (offer or request)
+# Create a RAK post (either offer or request)
 class RandomActOfKindnessCreateView(APIView):
     """
     Create a new Random Act of Kindness (RAK) post.
@@ -64,7 +64,7 @@ class RandomActOfKindnessCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# 2. Update a RAK post (edit an existing post)
+# Update a RAK post (edit an existing post)
 class RandomActOfKindnessUpdateView(APIView):
     """
     Retrieve or update an existing RAK post.
@@ -128,7 +128,7 @@ class RandomActOfKindnessUpdateView(APIView):
         return Response({"detail": "RAK deleted."}, status=status.HTTP_204_NO_CONTENT)
 
 
-# 3. View all unclaimed RAK posts
+# Get all unclaimed RAK posts
 class UnclaimedRAKListView(APIView):
     """
     List all unclaimed and public RAK posts.
@@ -151,7 +151,7 @@ class UnclaimedRAKListView(APIView):
         return Response(serializer.data)
 
 
-# New: View all claimed RAK posts
+#View all claimed RAK posts
 class ClaimedRAKListView(APIView):
     """
     List all claimed and public RAK posts.
@@ -176,7 +176,7 @@ class ClaimedRAKListView(APIView):
         return Response(serializer.data)
 
 
-# 4. Claim a RAK post – automatically update to 'in progress.'
+# Claim a RAK post –  this will automatically update status to 'in progress.'
 class RAKClaimView(APIView):
     """
     Claim a RAK post, automatically updating its status to 'in progress.'
@@ -214,7 +214,7 @@ class RAKClaimView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# New: Collaborate on a RAK post
+# Collaborate on a RAK post
 class RAKCollaborateView(APIView):
     """
     Collaborate on a RAK post.
@@ -255,7 +255,7 @@ class RAKCollaborateView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# 5. Enable collaborators on a RAK
+# Enable collaborators on a RAK
 class EnableCollaboratorsView(APIView):
     """
     Enable collaborators on a RAK post, allowing multiple collaborators.
@@ -288,7 +288,7 @@ class EnableCollaboratorsView(APIView):
         )
 
 
-# 6. Change the status of a RAK post
+# Change the status of a RAK post
 class RAKStatusUpdateView(APIView):
     """
     Update the status of a RAK post.
@@ -332,7 +332,7 @@ class RAKStatusUpdateView(APIView):
         return Response({"detail": "RAK status updated."}, status=status.HTTP_200_OK)
 
 
-# 9. Create Pay It Forward
+# Create a Pay It Forward instance
 class CreatePayItForwardView(APIView):
     """
     Create a Pay It Forward, generating a new RAK post linked to an original RAK.
@@ -377,8 +377,6 @@ class CreatePayItForwardView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-# Additional functionalities:
 
 
 # Fetch all RAK claims
@@ -431,7 +429,7 @@ class RAKClaimantsView(APIView):
         return Response(serializer.data)
 
 
-# New: Fetch all collaborators for a RAK
+# Fetch all collaborators for a RAK
 class RAKCollaboratorsView(APIView):
     """
     List all collaborators for a specific RAK.
@@ -484,7 +482,7 @@ class UserDetailView(APIView):
         return Response(serializer.data)
 
 
-# Display a user’s aura points and percentages towards levels
+# Display a user’s aura points, percentages and levels
 class UserAuraPointsView(APIView):
     """
     Display a user's aura points and percentage towards the next level.

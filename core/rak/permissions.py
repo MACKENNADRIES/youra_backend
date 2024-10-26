@@ -7,7 +7,7 @@ class IsOwnerOrClaimant(BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Allow if the user is either the owner or the claimant
+        # permission for if the user is either the owner or the claimant
         return obj.owner == request.user or (
             hasattr(obj, "rak_claim") and obj.rak_claim.claimant == request.user
         )
