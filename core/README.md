@@ -137,6 +137,36 @@ The app fosters a supportive environment where users can track their impact, con
 | `/user/profile/`                   | GET         | Retrieve Own Profile                                 | Retrieve the profile details of the authenticated user.                                                   | None                                                                                                                                         | 200                    | Authenticated users only             |
 | `/
 
+## Project Requirements
+Your crowdfunding project must:
+
+- [x] Be separated into two distinct projects: an API built using the Django Rest Framework and a website built using React. 
+- [x] Have a cool name, bonus points if it includes a pun and/or missing vowels. See https://namelix.com/ for inspiration. <sup><sup>(Bonus Points are meaningless)</sup></sup>
+- [x] Have a clear target audience.
+- [x] Have user accounts. A user should have at least the following attributes:
+  - [x] Username
+  - [x] Email address
+  - [x] Password
+- [x] Ability to create a “project” to be crowdfunded which will include at least the following attributes:
+  - [x] Title
+  - [x] Owner (a user)
+  - [x] Description
+  - [x] Image
+  - [x] Goal - either offering a random act of kindness or requesting one
+  - [x] Whether it is currently open to accepting new supporters or not
+  - [x] When the project was created
+- [x] Ability to "claim" to a random act of kindness offer or request. A claim should include at least the following attributes:
+  - [x] An amount, or action
+  - [x] The rak_id the claim is for
+  - [x] The supporter/user (i.e. who created the pledge)
+  - [x] Whether the claim is anonymous or not - kind of????
+  - [x] A comment to go along with the claim
+- [x] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
+- [x] Implement suitable permissions, e.g. who is allowed to delete a pledge?
+- [x] Return the relevant status codes for both successful and unsuccessful requests to the API.
+- [x] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
+- [x] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
+- [ ] Implement responsive design.
 
 
 ### DB Schema
@@ -258,33 +288,3 @@ The app fosters a supportive environment where users can track their impact, con
 
 
 
-## Project Requirements
-Your crowdfunding project must:
-
-- [x] Be separated into two distinct projects: an API built using the Django Rest Framework and a website built using React. 
-- [x] Have a cool name, bonus points if it includes a pun and/or missing vowels. See https://namelix.com/ for inspiration. <sup><sup>(Bonus Points are meaningless)</sup></sup>
-- [x] Have a clear target audience.
-- [x] Have user accounts. A user should have at least the following attributes:
-  - [x] Username
-  - [x] Email address
-  - [x] Password
-- [x] Ability to create a “project” to be crowdfunded which will include at least the following attributes:
-  - [x] Title
-  - [x] Owner (a user)
-  - [x] Description
-  - [x] Image
-  - [x] Goal - either offering a random act of kindness or requesting one
-  - [x] Whether it is currently open to accepting new supporters or not
-  - [x] When the project was created
-- [x] Ability to "claim" to a random act of kindness offer or request. A claim should include at least the following attributes:
-  - [x] An amount, or action
-  - [x] The rak_id the claim is for
-  - [x] The supporter/user (i.e. who created the pledge)
-  - [x] Whether the claim is anonymous or not - kind of????
-  - [x] A comment to go along with the claim
-- [x] Implement suitable update/delete functionality, e.g. should a project owner be allowed to update a project description?
-- [x] Implement suitable permissions, e.g. who is allowed to delete a pledge?
-- [x] Return the relevant status codes for both successful and unsuccessful requests to the API.
-- [x] Handle failed requests gracefully (e.g. you should have a custom 404 page rather than the default error page).
-- [x] Use Token Authentication, including an endpoint to obtain a token along with the current user's details.
-- [ ] Implement responsive design.
