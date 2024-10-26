@@ -1,3 +1,5 @@
+# use this for points details
+
 def get_aura_level(points):
     aura_levels = [
         # Generator (The Masterful Creator)
