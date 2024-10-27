@@ -31,10 +31,9 @@ urlpatterns = [
     path(
         "leaderboard/", LeaderboardView.as_view(), name="leaderboard"
     ),  # Display top users by aura points
-    # Token-based authentication
     path(
         "token/", CustomAuthToken.as_view(), name="custom-token-auth"
-    ),  # Custom token authentication without 'api/'
+    ),  # Custom token authentication 
     path("follow/<int:user_id>/", FollowUserView.as_view(), name="follow-user"),
     path("unfollow/<int:user_id>/", UnfollowUserView.as_view(), name="unfollow-user"),
     path(

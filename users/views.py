@@ -12,6 +12,8 @@ from users.serializers import (
     CustomAuthTokenSerializer,
 )
 
+#WAIT!!! check i did change variables 
+
 
 class CustomAuthToken(ObtainAuthToken):
     """

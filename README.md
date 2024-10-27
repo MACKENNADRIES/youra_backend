@@ -2,22 +2,22 @@
 
 Mackenna Dries 
 
-## ATTENTION:
+## READ ME:
 Ok. SO i know this is a little ambitious... But i have big hopes and dreams and a lack of knowledge won't hold me back.
 
-Some extra features are not fully functional at the moment, and i know that some of the logic is a little bit funky in certain spots... I think I will be able to clear things up when I work on the front end and can see how it's all working .... at least that is the plan 
+I really want to work on this as a little side project, which is why I have added some extra functionalities. Some extra features are not fully functional at the moment, and i know that some of the logic is a little bit funky in certain spots... I think I will be able to clear things up when I work on the front end and can see how it's all working .... at least that is the plan 
 
 ## Planning:
 
 ### Concept/Name
 **YOURA** is a platform designed to inspire and promote positivity through Random Acts of Kindness (RAKs), where users can grow their aura by recieiving aura. Users can post either requests or offers of a RAK, claim acts to fulfil, and earn aura points, which represent their contribution to the kindness community. The more RAKs a user performs, the higher their aura level grows, symbolised by visual elements such as glowing avatars and badges.
 
-The app integrates social media features, allowing users to follow others, share posts, upload media, and comment on acts of kindness. It encourages users to pay it forward after receiving a RAK, ensuring that kindness spreads throughout the community. With a focus on positive interactions, users can take part in kindness challenges, earn achievements, and build an inspiring feed of their contributions.
+Youra encourages users to pay it forward after receiving a RAK, ensuring that kindness spreads throughout the community. With a focus on positive interactions, users can take part in kindness challenges, earn achievements, and build an inspiring feed of their contributions.
 
 The app fosters a supportive environment where users can track their impact, connect with like-minded individuals, and share their journey toward making the world a kinder place, all while maintaining privacy and control over their profiles and posts.
 
 ### Intended Audience/User Stories
-- **Intended Audience**: The intended audience for YOURA includes individuals who want a social media platform that does good and promotes positivity, through random acts of kindness, and social responsibility.
+- **Intended Audience**: The intended audience for YOURA includes individuals who want to do good and promotes positivity, through random acts of kindness, and social responsibility.
 - **User Stories**:
   - As a user, I want to post an offer to perform an act of kindness so that others can benefit.
   - As a user, I want to request help through a Random Act of Kindness when I need support.
@@ -50,45 +50,72 @@ The app fosters a supportive environment where users can track their impact, con
 - **Explore Page**
   -Shows random RAKs that you might be interested in (potentially based off ones you have interacted with/similar aura level)
 
-### To Do
-  - each claim has a column that is either true or false - getting details without the username
-  - ammount ? price ? 
-  - when deleting - set user to inactive rather than deleting - field is active - True 
-  - logic for delete (images can be deleted not users ????)
-  - deploy before saturday
-  - storing points as queries 
-  - how points were acquired? - do i want to include this --- YES --- points associated with categories, you have earnt this doing raks, your have earnt this from paying it forward --- DONE 
-  - maybe this is more for the front end but it could be like data pop ups on the profile (how points are acquired --- algorithm to calculate percantages???)
-  - points should proabably be in the user table as they have a one to one relationship with the user - this will be chatoic to fix --- DONE!!!!
-  - a table with aura_pointsz_type - offer, pay it forward, do users get points for requesting (maybe a very small ammount)
-  - point logic - points only awarded when action is complete - ie rak or pif -- DONE 
-  - leaderboard - enumerating over the list of users - example on stack overflow 
-  - test leaderboard -- DONE 
-  - fix comments clean up code !!!!!
-  - implement my own custom error pages (link on slack)
-  - show a collaboration on insomnia 
-  - anonymous!!!!! MAKE SURE THIS WORKS 
-  - update user detail!!!! - change username password etc 
-  - ordering projects in a feed - by latest post or by other filters
-  - only allowing a claim if rak is open
-  - making sure personal details are anonymous
-  - admin functions
-  - align feature instead of like
+### Step-by-Step Instructions for Registering a New User and Creating a RAK Project
 
-  - add profile features ( Profile picture, bio etc )
-  - develop feed and explore (wander) page
-  - implemet align with this feature (like)
-  - TEST POINTS AFTER ANONYMOUS CLAIM 
-  - Why when retrieving is it not anonymous ?????
-### Design Ideas
-- **The Look and Feel**
-  - ethereal look and feel - stardust, glowing auras 
-  - Login/Loading page with moving stars along lines 
-  - Feed Page 
-  - Discover Page 
-  - Profile 
-  - Aura details page 
-  - I think the base/background colour needs to be black or very close to for the colours to show up the best - maybe a nightime feel/stardust 
+---
+
+### Step 1: Register a New User
+
+- **Endpoint:** `/users/`  
+- **Method:** `POST`  
+- **Request Body:**
+    ```json
+    {
+        "username": "newuser",
+        "password": "securepassword123",
+        "email": "newuser@example.com"
+    }
+    ```
+  
+#### Steps:
+1. Send a `POST` request to `/users/` with the user details (`username`, `password`, `email`).
+2. If successful, the response will contain the registered user details.
+
+---
+
+### Step 2: Obtain Authentication Token
+
+- **Endpoint:** `/auth/token/`  
+- **Method:** `POST`  
+- **Request Body:**
+    ```json
+    {
+        "username": "newuser",
+        "password": "securepassword123"
+    }
+    ```
+
+#### Steps:
+1. Send a `POST` request to `/auth/token/` with the username and password.
+2. If successful, the response will include an authentication token, `user_id`, and `username`. This token is needed for authenticated requests.
+
+---
+
+### Step 3: Create a New Random Act of Kindness (RAK) Project
+
+- **Endpoint:** `/rak/`  
+- **Method:** `POST`  
+- **Headers:** `Authorization: Token your-authentication-token`  
+- **Request Body:**
+    ```json
+    {
+        "title": "Help Clean Up the Park",
+        "description": "Join me in cleaning up the local park this weekend.",
+        "media": null,
+        "private": false,
+        "rak_type": "offer",
+        "action": "Cleanup",
+        "aura_points_value": 50,
+        "anonymous_rak": false,
+        "allow_collaborators": true,
+        "allow_claimants": true
+    }
+    ```
+
+#### Steps:
+1. Send a `POST` request to `/rak/` with the RAK details (`title`, `description`, `rak_type`, etc.).
+2. Include the `Authorization` header with the token from Step 2.
+3. If successful, the response will contain the newly created RAK project details.
 
 
 ### API Spec
@@ -181,6 +208,49 @@ Your crowdfunding project must:
 ![](./insomnia/TokenAuthentication.png)
 ![](./insomnia/UpdateRAKPost.png)
 
+
+### To Do
+  - each claim has a column that is either true or false - getting details without the username
+  - ammount ? price ? 
+  - when deleting - set user to inactive rather than deleting - field is active - True 
+  - logic for delete (images can be deleted not users ????)
+  - deploy before saturday
+  - storing points as queries 
+  - how points were acquired? - do i want to include this --- YES --- points associated with categories, you have earnt this doing raks, your have earnt this from paying it forward --- DONE 
+  - maybe this is more for the front end but it could be like data pop ups on the profile (how points are acquired --- algorithm to calculate percantages???)
+  - points should proabably be in the user table as they have a one to one relationship with the user - this will be chatoic to fix --- DONE!!!!
+  - a table with aura_pointsz_type - offer, pay it forward, do users get points for requesting (maybe a very small ammount)
+  - point logic - points only awarded when action is complete - ie rak or pif -- DONE 
+  - leaderboard - enumerating over the list of users - example on stack overflow 
+  - test leaderboard -- DONE 
+  - fix comments clean up code !!!!!
+  - implement my own custom error pages (link on slack)
+  - show a collaboration on insomnia 
+  - anonymous!!!!! MAKE SURE THIS WORKS 
+  - update user detail!!!! - change username password etc 
+  - ordering projects in a feed - by latest post or by other filters
+  - only allowing a claim if rak is open
+  - making sure personal details are anonymous
+  - admin functions
+  - align feature instead of like
+
+  - add profile features ( Profile picture, bio etc )
+  - develop feed and explore (wander) page
+  - implemet align with this feature (like)
+  - TEST POINTS AFTER ANONYMOUS CLAIM 
+  - Why when retrieving is it not anonymous ?????
+
+
+### Design Ideas
+- **The Look and Feel**
+  - ethereal look and feel - stardust, glowing auras 
+  - Login/Loading page with moving stars along lines 
+  - Feed Page 
+  - Discover Page 
+  - Profile 
+  - Aura details page 
+  - I think the base/background colour needs to be black or very close to for the colours to show up the best - maybe a nightime feel/stardust
+
 ## Must-Have Features:
 
 ### User Authentication and Profiles:
@@ -267,33 +337,6 @@ Your crowdfunding project must:
 ### Advanced Analytics for Admins:
 - Admin dashboard showing trends in kindness (e.g., types of acts, most active regions, etc.).
 
-### Aura Levels
-
-1. **Generator (The Masterful Creator)**: Warm Yellow or Golden Aura, signifying the power to start and sustain acts of kindness.
-   - **Initiator**: Light Yellow - Focus on starting projects.
-   - **Sustainer**: Golden Yellow - Maintaining momentum.
-   - **Visionary**: Amber - Long-term impact.
-   - **Creator**: Deep Orange - Manifesting through hard work.
-2. **Manifesting Generator (The Impacting Creator)**: Fiery Red Aura, representing quick action and impactful results.
-   - **Accelerator**: Bright Red - Quick decision-making and action.
-   - **Multitasker**: Coral Red - Efficient and dynamic.
-   - **Problem Solver**: Burgundy - Strategically finding solutions.
-   - **Transformer**: Crimson - Creating impactful changes.
-3. **Projector (The Wisdom Keeper)**: Deep Blue Aura, symbolising wisdom and guidance.
-   - **Guide**: Sky Blue - Supporting others with clarity.
-   - **Teacher**: Navy Blue - Sharing wisdom.
-   - **Healer**: Indigo - Restoring balance.
-   - **Orchestrator**: Royal Blue - Directing complex situations.
-4. **Manifestor (The Force of Nature)**: Dark Green Aura, representing the power to initiate change.
-   - **Instigator**: Olive Green - Initiating change.
-   - **Leader**: Emerald Green - Powerful presence.
-   - **Independent**: Dark Teal - Working solo, pushing boundaries.
-   - **Creator**: Deep Forest Green - Transforming ideas into action.
-5. **Reflector (The Sacred Mirror)**: Silver or White Aura, reflecting the community's energy.
-   - **Observer**: Light Silver - Reflecting the environment.
-   - **Analyzer**: Soft Grey - Processing feedback.
-   - **Balancer**: Pearl White - Achieving harmony.
-   - **Harmoniser**: Crystal White - Bringing balance.
 
 
 

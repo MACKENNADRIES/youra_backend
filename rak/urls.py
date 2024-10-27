@@ -45,7 +45,7 @@ urlpatterns = [
     ),
     # Claims
     path("claims/", views.AllClaimsView.as_view(), name="all-claims"),
-    # User profiles
+    # User profiles --- move ????????????????????????????
     path("users/<int:pk>/", views.UserDetailView.as_view(), name="user-detail"),
     path(
         "users/<int:pk>/aura-points/",

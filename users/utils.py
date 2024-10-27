@@ -1,4 +1,4 @@
-# users/utils.py
+# will need more points??? maybe make gaps bigger
 
 
 def get_aura_level(points):

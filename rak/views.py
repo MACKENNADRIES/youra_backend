@@ -1,25 +1,19 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from django.db.models import F, Q, Count
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import PermissionDenied
 
 from .models import (
     RandomActOfKindness,
     Claimant,
-    Collaborators,
-    Notification,
     PayItForward,
 )
 from rak.serializers import (
     RandomActOfKindnessSerializer,
     ClaimantSerializer,
     CollaboratorsSerializer,
-    NotificationSerializer,
-    PayItForwardSerializer,
 )
 from users.models import UserProfile
 from users.serializers import UserProfileSerializer, CustomUserSerializer
@@ -151,7 +145,7 @@ class UnclaimedRAKListView(APIView):
         return Response(serializer.data)
 
 
-#View all claimed RAK posts
+# View all claimed RAK posts
 class ClaimedRAKListView(APIView):
     """
     List all claimed and public RAK posts.
@@ -363,12 +357,10 @@ class CreatePayItForwardView(APIView):
                 {"detail": "RAK must be completed to pay it forward."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        # Create a new RAK
         data = request.data.copy()
         serializer = RandomActOfKindnessSerializer(data=data)
         if serializer.is_valid():
             new_rak = serializer.save(created_by=request.user)
-            # Create PayItForward instance
             PayItForward.objects.create(original_rak=original_rak, new_rak=new_rak)
             return Response(
                 {"detail": "Pay It Forward created.", "new_rak_id": new_rak.id},
@@ -376,7 +368,6 @@ class CreatePayItForwardView(APIView):
             )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 # Fetch all RAK claims

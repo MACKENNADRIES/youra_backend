@@ -24,7 +24,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = CustomUserSerializer(read_only=True)  # NESTING!!!!!!!!!!!!!!!
+    user = CustomUserSerializer(read_only=True)  # NESTING!!!!!!!!!!!!!!! 
     points_from_claiming_percentage = serializers.SerializerMethodField()
     points_from_pay_it_forward_percentage = serializers.SerializerMethodField()
     points_from_offers_percentage = serializers.SerializerMethodField()
@@ -32,7 +32,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
-            "user",  # This now includes id, username, email, first_name, last_name from CustomUser
+            "user",  
             "aura_points",
             "aura_level",
             "aura_sub_level",
@@ -40,14 +40,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "points_from_claiming",
             "points_from_pay_it_forward",
             "points_from_offers",
-            "points_from_claiming_percentage",  # New percentage field for claiming
-            "points_from_pay_it_forward_percentage",  # New percentage field for Pay It Forward
-            "points_from_offers_percentage",  # New percentage field for offers
+            "points_from_claiming_percentage",  
+            "points_from_pay_it_forward_percentage",  
+            "points_from_offers_percentage",  
         ]
 
     # Helper function to calculate the percentage
     def calculate_percentage(self, part, total):
-        if total == 0:  # Prevent division by zero
+        if total == 0: 
             return 0
         return (part / total) * 100
 
@@ -114,5 +114,5 @@ class FollowSerializer(serializers.ModelSerializer):
 
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Report  # Make sure Report is properly referenced here
+        model = Report 
         fields = ["reported_user", "report_type", "description"]
