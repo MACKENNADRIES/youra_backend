@@ -197,7 +197,7 @@ Your crowdfunding project must:
 
 
 ### DB Schema
-![](../core/class.png)
+![](./class.png)
 
 ### Insomnia requests
 
