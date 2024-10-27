@@ -174,12 +174,12 @@ Your crowdfunding project must:
 
 ### Insomnia requests
 
-![](../insomnia/CreateUser.png)
-![](../insomnia/DeleteRAKPost.png)
-![](../insomnia/GetUserProfile.png)
-![](../insomnia/IncorrectLoginDetails.png)
-![](../insomnia/TokenAuthentication.png)
-![](../insomnia/UpdateRAKPost.png)
+![](./insomnia/CreateUser.png)
+![](./insomnia/DeleteRAKPost.png)
+![](./insomnia/GetUserProfile.png)
+![](./insomnia/IncorrectLoginDetails.png)
+![](./insomnia/TokenAuthentication.png)
+![](./insomnia/UpdateRAKPost.png)
 
 ## Must-Have Features:
 
