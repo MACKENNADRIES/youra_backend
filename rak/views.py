@@ -699,6 +699,18 @@ class ExploreRAKView(APIView):
         serializer = RandomActOfKindnessSerializer(raks, many=True)
         return Response(serializer.data)
 
+class AllRAKListView(APIView):
+    """
+    List all Random Acts of Kindness (RAKs).
+    """
+
+    permission_classes = [permissions.AllowAny]  # Make it public or restrict as needed
+
+    def get(self, request):
+        raks = RandomActOfKindness.objects.all()  # Query all RAKs
+        serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 # Display how a user’s aura points are calculated
 class UserAuraPointsDetailsView(APIView):

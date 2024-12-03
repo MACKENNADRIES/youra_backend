@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # RAK posts
     path("rak/", views.RandomActOfKindnessCreateView.as_view(), name="rak-create"),
+    path("rak/all/", views.AllRAKListView.as_view(), name="rak-all"),
     path(
         "rak/<int:pk>/",
         views.RandomActOfKindnessUpdateView.as_view(),
