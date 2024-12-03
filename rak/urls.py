@@ -1,8 +1,9 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
     # RAK posts
+    path("rak/", include("rak.urls")),
     path("rak/", views.RandomActOfKindnessCreateView.as_view(), name="rak-create"),
     path("rak/rak/all/", views.AllRAKListView.as_view(), name="rak-all"),
     path(
