@@ -169,9 +169,7 @@ class ClaimedRAKListView(APIView):
         serializer = RandomActOfKindnessSerializer(raks, many=True)
         return Response(serializer.data)
 
-
-# Claim a RAK post –  this will automatically update status to 'in progress.'
-class RAKClaimView(APIView):
+    # Claim a RAK post –  this will automatically update status to 'in progress.'class RAKClaimView(APIView):
     """
     Claim a RAK post, automatically updating its status to 'in progress.'
 
@@ -200,10 +198,12 @@ class RAKClaimView(APIView):
         anonymous = request.data.get("anonymous_claimant", False)
         comment = request.data.get("comment", "")
         try:
+            # Claim the RAK
             rak.claim_rak(request.user, comment=comment, anonymous_claimant=anonymous)
-            return Response(
-                {"detail": "RAK claimed successfully."}, status=status.HTTP_200_OK
-            )
+
+            # Serialize and return the updated RAK
+            serializer = RandomActOfKindnessSerializer(rak)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -698,6 +698,7 @@ class ExploreRAKView(APIView):
         )
         serializer = RandomActOfKindnessSerializer(raks, many=True)
         return Response(serializer.data)
+
 
 class AllRAKListView(APIView):
     """
