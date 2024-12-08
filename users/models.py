@@ -12,6 +12,9 @@ class CustomUser(AbstractUser):
         return self.username
 
 
+from django.db import models
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     aura_points = models.PositiveIntegerField(default=0)
@@ -21,6 +24,9 @@ class UserProfile(models.Model):
     points_from_claiming = models.IntegerField(default=0)
     points_from_pay_it_forward = models.IntegerField(default=0)
     points_from_offers = models.IntegerField(default=0)
+    profile_image = models.ImageField(
+        upload_to="profile_images/", blank=True, null=True
+    )
     history = HistoricalRecords()
 
     def calculate_level(self):
@@ -33,6 +39,7 @@ class UserProfile(models.Model):
         self.aura_points += points
         self.calculate_level()
         self.save()
+
 
 def award_badges(self, previous_points):
     # Get the previous and current aura levels
@@ -76,7 +83,6 @@ def award_badges(self, previous_points):
                 # You could also add logic to save the badge in the user's profile
                 self.badges.add(badge_name)
                 self.save()
-
 
     def __str__(self):
         return f"UserProfile for {self.user.username}"

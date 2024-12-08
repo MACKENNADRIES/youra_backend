@@ -33,6 +33,9 @@ DEBUG = os.environ.get("DJANGO_DEBUG") != "False"
 ALLOWED_HOSTS = ["*"]
 CORS_ORIGIN_ALLOW_ALL = True
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 # Application definition
 
 INSTALLED_APPS = [

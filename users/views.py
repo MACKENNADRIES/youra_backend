@@ -2,6 +2,7 @@ from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from users.models import UserProfile, CustomUser, Follow
@@ -12,7 +13,37 @@ from users.serializers import (
     CustomAuthTokenSerializer,
 )
 
-# WAIT!!! check i did change variables
+
+class UserProfileImageUploadView(APIView):
+    """
+    View to upload or update a user's profile image.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def put(self, request):
+        """
+        Handle image upload for the authenticated user.
+
+        Args:
+            request: The HTTP request containing the image file.
+
+        Returns:
+            Response: A DRF Response object with the updated profile data.
+        """
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            return Response({"error": "UserProfile does not exist."}, status=404)
+
+        serializer = UserProfileSerializer(
+            user_profile, data=request.data, partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
 
 
 class CustomAuthToken(ObtainAuthToken):
