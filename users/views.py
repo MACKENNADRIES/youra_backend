@@ -12,7 +12,7 @@ from users.serializers import (
     CustomAuthTokenSerializer,
 )
 
-#WAIT!!! check i did change variables 
+# WAIT!!! check i did change variables
 
 
 class CustomAuthToken(ObtainAuthToken):
@@ -243,7 +243,7 @@ class LeaderboardView(APIView):
         Returns:
             Response: A DRF Response object containing a list of top users.
         """
-        top_users = UserProfile.objects.order_by("-aura_points")[:10]
+        top_users = UserProfile.objects.order_by("-aura_points")
         data = [
             {
                 "username": user.user.username,
