@@ -35,22 +35,49 @@ class UserProfile(models.Model):
         self.calculate_level()
         self.save()
 
-    def award_badges(self, previous_level):
-        current_level = self.aura_level
-        badge_mapping = {
-            "Generator": "First Generator Badge",
-            "Manifesting Generator": "First Manifesting Generator Badge",
-            "Projector": "First Projector Badge",
-            "Manifestor": "First Manifestor Badge",
-            "Reflector": "First Reflector Badge",
-        }
-        if previous_level != current_level and current_level in badge_mapping:
-            from rak.models import Notification  # Avoid circular import
+def award_badges(self, previous_points):
+    # Get the previous and current aura levels
+    previous_level_info = get_aura_level(previous_points)
+    current_level_info = get_aura_level(self.aura_points)
 
-            Notification.objects.create(
-                recipient=self.user,
-                message=f"Congrats! You've earned the '{badge_mapping[current_level]}' badge.",
-            )
+    # Check if the level has changed
+    if previous_level_info and current_level_info:
+        previous_level = previous_level_info["level"]
+        current_level = current_level_info["level"]
+
+        if previous_level != current_level:
+            # Define badge mapping for each aura level
+            badge_mapping = {
+                "Initiator": "First Initiator Badge",
+                "Sustainer": "First Sustainer Badge",
+                "Visionary": "First Visionary Badge",
+                "Creator": "First Creator Badge",
+                "Innovator": "First Innovator Badge",
+                "Accelerator": "First Accelerator Badge",
+                "Transformer": "First Transformer Badge",
+                "Healer": "First Healer Badge",
+                "Orchestrator": "First Orchestrator Badge",
+                "Harmoniser": "First Harmoniser Badge",
+            }
+
+            # Award badge if the current level has a badge
+            if current_level in badge_mapping:
+                badge_name = badge_mapping[current_level]
+
+                # Avoid circular import
+                from rak.models import Notification
+
+                # Create a notification or handle badge logic here
+                Notification.objects.create(
+                    user=self.user,
+                    title=f"Congratulations on achieving {current_level}!",
+                    message=f"You've earned the {badge_name}. Keep up the great work!",
+                )
+
+                # You could also add logic to save the badge in the user's profile
+                self.badges.add(badge_name)
+                self.save()
+
 
     def __str__(self):
         return f"UserProfile for {self.user.username}"
