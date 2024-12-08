@@ -1,7 +1,7 @@
 def get_aura_level(points):
     # Defining ranges for 10 levels with descriptive names and colors
     aura_levels = [
-(range(0, 100), "Initiator", "#00FF00"),  # Green
+(range(0, 100), "Initiator", "#50C878"),  # Green
 (range(101, 200), "Sustainer", "#FFD700"),  # Yellow
 (range(201, 300), "Visionary", "#1E90FF"),  # Electric Blue
 (range(301, 400), "Creator", "#FF00FF"),  # Magenta

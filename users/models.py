@@ -17,7 +17,7 @@ class UserProfile(models.Model):
     aura_points = models.PositiveIntegerField(default=0)
     aura_level = models.CharField(max_length=255, default="Initiator")
     aura_sub_level = models.CharField(max_length=255, default="Initiator")
-    aura_color = models.CharField(max_length=50, default="light yellow")
+    aura_color = models.CharField(max_length=50, default="#50C878")
     points_from_claiming = models.IntegerField(default=0)
     points_from_pay_it_forward = models.IntegerField(default=0)
     points_from_offers = models.IntegerField(default=0)
@@ -25,9 +25,8 @@ class UserProfile(models.Model):
 
     def calculate_level(self):
         aura_info = get_aura_level(self.aura_points)
-        self.aura_level = aura_info["main_level"]
-        self.aura_sub_level = aura_info["sub_level"]
-        self.aura_color = aura_info.get("color", "light yellow")
+        self.aura_level = aura_info["level"]
+        self.aura_color = aura_info.get("glowColor", "#50C878")
         self.save()
 
     def award_aura_points(self, points):
