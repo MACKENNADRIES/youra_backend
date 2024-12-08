@@ -169,7 +169,8 @@ class ClaimedRAKListView(APIView):
         serializer = RandomActOfKindnessSerializer(raks, many=True)
         return Response(serializer.data)
 
-    # Claim a RAK post –  this will automatically update status to 'in progress.'class RAKClaimView(APIView):
+
+class RAKClaimView(APIView):
     """
     Claim a RAK post, automatically updating its status to 'in progress.'
 
