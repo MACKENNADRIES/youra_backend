@@ -171,42 +171,27 @@ class ClaimedRAKListView(APIView):
 
 
 class RAKClaimView(APIView):
-    """
-    Claim a RAK post, automatically updating its status to 'in progress.'
-
-    **Endpoint:** `/rak/<int:pk>/claim/`
-
-    **Method:** `POST`
-
-    **Permissions:** Authenticated users only.
-
-    **URL Parameters:**
-    - `pk`: ID of the RAK post to claim.
-
-    **Request Body:**
-    - `anonymous_claimant`: Boolean, optional.
-    - `comment`: String, optional.
-
-    **Functionality:**
-    - Claim a RAK post – automatically updates to 'in progress.'
-    - Allow users to claim RAKs anonymously.
-    """
-
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         rak = get_object_or_404(RandomActOfKindness, pk=pk)
         anonymous = request.data.get("anonymous_claimant", False)
         comment = request.data.get("comment", "")
+
         try:
-            # Claim the RAK
+            # Try to claim the RAK
             rak.claim_rak(request.user, comment=comment, anonymous_claimant=anonymous)
 
-            # Serialize and return the updated RAK
+            # Return the updated RAK
             serializer = RandomActOfKindnessSerializer(rak)
             return Response(serializer.data, status=status.HTTP_200_OK)
+        
         except ValueError as e:
+            # Handle any error (e.g., if the RAK is already claimed, etc.)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 
 # Collaborate on a RAK post
