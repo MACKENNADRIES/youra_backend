@@ -712,6 +712,24 @@ class MyClaimedRAKListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class MyCompletedRequestRAKListView(APIView):
+    """
+    List all Random Acts of Kindness (RAKs) posted by the user that are of type 'request' and have status 'completed'.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get the RAKs created by the user with type 'request' and status 'completed'
+        completed_request_raks = RandomActOfKindness.objects.filter(
+            created_by=request.user, rak_type="request", status="completed"
+        )
+        # Serialize the filtered RAKs
+        serializer = RandomActOfKindnessSerializer(completed_request_raks, many=True)
+        # Return the serialized data in the response
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class MyPostedRAKListView(APIView):
     """
     List all Random Acts of Kindness (RAKs) posted by the user.
