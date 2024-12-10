@@ -185,13 +185,10 @@ class RAKClaimView(APIView):
             # Return the updated RAK
             serializer = RandomActOfKindnessSerializer(rak)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
         except ValueError as e:
             # Handle any error (e.g., if the RAK is already claimed, etc.)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 
 
 # Collaborate on a RAK post
@@ -696,6 +693,36 @@ class AllRAKListView(APIView):
     def get(self, request):
         raks = RandomActOfKindness.objects.all()  # Query all RAKs
         serializer = RandomActOfKindnessSerializer(raks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class MyClaimedRAKListView(APIView):
+    """
+    List all Random Acts of Kindness (RAKs) the user has claimed.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get the RAKs where the user is a claimant
+        claimed_raks = RandomActOfKindness.objects.filter(
+            claims__claimer=request.user
+        ).distinct()
+        serializer = RandomActOfKindnessSerializer(claimed_raks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class MyPostedRAKListView(APIView):
+    """
+    List all Random Acts of Kindness (RAKs) posted by the user.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get the RAKs created by the user
+        posted_raks = RandomActOfKindness.objects.filter(created_by=request.user)
+        serializer = RandomActOfKindnessSerializer(posted_raks, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

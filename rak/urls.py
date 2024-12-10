@@ -25,6 +25,10 @@ urlpatterns = [
         name="rak-collaborate",
     ),
     path(
+        "my-claimed-raks/", views.MyClaimedRAKListView.as_view(), name="my-claimed-raks"
+    ),
+    path("my-posted-raks/", views.MyPostedRAKListView.as_view(), name="my-posted-raks"),
+    path(
         "rak/<int:pk>/enable-collaborators/",
         views.EnableCollaboratorsView.as_view(),
         name="rak-enable-collaborators",
