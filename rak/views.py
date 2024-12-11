@@ -303,6 +303,9 @@ class RAKStatusUpdateView(APIView):
             )
         if new_status == "completed":
             rak.complete_rak()
+            rak.send_notification(
+                message=f"RAK '{rak.title}' has been marked as completed. YAY!"
+                )
         else:
             rak.status = new_status
             rak.save()
@@ -414,7 +417,7 @@ class RAKCollaboratorsView(APIView):
 
     **Permissions:** Authenticated users only.
 
-    **URL Parameters:**
+    **URL Parameters:*
     - `pk`: ID of the RAK post.
 
     **Functionality:**
