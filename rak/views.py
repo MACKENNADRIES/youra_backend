@@ -5,6 +5,8 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
+from rak.choices import POST_TYPE_CHOICES
+
 from .models import (
     RandomActOfKindness,
     Claimant,
@@ -291,7 +293,12 @@ class RAKStatusUpdateView(APIView):
 
     def post(self, request, pk):
         rak = get_object_or_404(RandomActOfKindness, pk=pk)
-        if rak.created_by != request.user:
+        if rak.created_by == request.user and rak.rak_type == "offer":
+            return Response(
+                {"detail": "You cannot change the status of this RAK."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if rak.created_by != request.user and rak.rak_type == "request":
             return Response(
                 {"detail": "You cannot change the status of this RAK."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -305,7 +312,7 @@ class RAKStatusUpdateView(APIView):
             rak.complete_rak()
             rak.send_notification(
                 message=f"RAK '{rak.title}' has been marked as completed. YAY!"
-                )
+            )
         else:
             rak.status = new_status
             rak.save()
