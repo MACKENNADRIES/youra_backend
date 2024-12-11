@@ -295,12 +295,12 @@ class RAKStatusUpdateView(APIView):
         rak = get_object_or_404(RandomActOfKindness, pk=pk)
         if rak.created_by == request.user and rak.rak_type == "offer":
             return Response(
-                {"detail": "You cannot change the status of this RAK."},
+                {"detail": f"You cannot change the status of this RAK. created {rak.created_by.username}, request {request.user.username}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if rak.created_by != request.user and rak.rak_type == "request":
             return Response(
-                {"detail": "You cannot change the status of this RAK."},
+                {"detail": f"You cannot change the status of this RAK. {}"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         new_status = request.data.get("status")
