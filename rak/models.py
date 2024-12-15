@@ -185,4 +185,3 @@ class PayItForward(models.Model):
 
     def __str__(self):
         return f"Pay It Forward by {self.paid_forward_by.username} for {self.original_rak.title}"
-
