@@ -1,4 +1,4 @@
-# This is for 'events' where i want something to happen. Like event listener kind of..... use this for point logic? 
+# This is for 'events' where i want something to happen. Like event listener kind of..... use this for point logic?
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -11,17 +11,17 @@ User = get_user_model()
 
 @receiver(post_save, sender=RandomActOfKindness)
 def handle_rak_post_save(sender, instance, created, **kwargs):
-    # I only want to award aura points if the RAK is completed and it's not a Pay It Forward action 
-    # --- Logic here could be a bit flawed ....CHECK ME 
+    # I only want to award aura points if the RAK is completed and it's not a Pay It Forward action
+    # --- Logic here could be a bit flawed ....CHECK ME
     if instance.completed_at and not instance.is_paid_forward:
         # INSTANCE 1 ---  RAK is an offer, award points via the created_by
         if instance.rak_type == "offer":
             user_profile = instance.created_by.userprofile
             user_profile.aura_points += (
-                instance.aura_points
+                instance.aura_points_value
             )  # Add aura points to created_by user
             user_profile.points_from_offers += (
-                instance.aura_points
+                instance.aura_points_value
             )  # Track points from offers
             user_profile.save()
 
