@@ -293,25 +293,36 @@ class RAKStatusUpdateView(APIView):
 
     def post(self, request, pk):
         rak = get_object_or_404(RandomActOfKindness, pk=pk)
-        # if rak.created_by == request.user and rak.rak_type == "offer":
-        #     return Response(
-        #         {
-        #             "detail": f"You cannot change the status of this RAK. created {rak.created_by.username}, request {request.user.username}"
-        #         },
-        #         status=status.HTTP_403_FORBIDDEN,
-        #     )
-        # if rak.created_by != request.user and rak.rak_type == "request":
-        #     return Response(
-        #         {
-        #             "detail": f"You cannot change the status of this RAK. created {rak.created_by.username}, request {request.user.username}"
-        #         },
-        #         status=status.HTTP_403_FORBIDDEN,
-        #     )
+        user = request.user
         new_status = request.data.get("status")
+
+        # Validate the new status
         if new_status not in ["open", "in progress", "completed"]:
             return Response(
                 {"detail": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Logic for RAK type "request"
+        if rak.rak_type == "request":
+            if rak.created_by != user:
+                return Response(
+                    {
+                        "detail": f"You are not authorised to update this RAK. Only the creator can mark it as completed."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # Logic for RAK type "offer"
+        elif rak.rak_type == "offer":
+            if not rak.claims.filter(claimer=user).exists():
+                return Response(
+                    {
+                        "detail": f"You are not authorised to update this RAK. Only the person who claimed it can mark it as completed."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        # If new status is "completed", perform additional actions
         if new_status == "completed":
             rak.complete_rak()
             rak.send_notification(
@@ -320,6 +331,7 @@ class RAKStatusUpdateView(APIView):
         else:
             rak.status = new_status
             rak.save()
+
         return Response({"detail": "RAK status updated."}, status=status.HTTP_200_OK)
 
 

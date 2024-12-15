@@ -103,7 +103,8 @@ class RandomActOfKindnessSerializer(serializers.ModelSerializer):
         }
 
     def get_is_paid_forward(self, obj):
-        return obj.is_paid_forward
+        # Check if the RAK is referenced as an original_rak in PayItForward
+        return PayItForward.objects.filter(original_rak=obj).exists()
 
 
 class NotificationSerializer(serializers.ModelSerializer):
